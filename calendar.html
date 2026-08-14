@@ -29,7 +29,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 <div id="app" class="app"></div>
 <nav id="bottomNav"><a href="./index.html">ホーム</a><a class="active" href="./calendar.html">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script>window.START_VIEW="cal";</script><script src="./app.js?v=17"></script>
+<script>window.START_VIEW="cal";</script><script src="./app.js?v=19"></script>
 </body>
 </html>
 
@@ -93,4 +93,18 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 .calendar .cal-label{font-size:12px!important;line-height:1.25!important;padding:3px 5px!important;border-radius:3px!important}
 .calendar .week div:first-child{color:#e53935!important}
 .calendar .week div:last-child{color:#3567a8!important}
+</style>
+
+<style>
+/* v18: calendar-only events, date add choice, long press editing */
+.calendar .day.today{border:2px solid #111827!important}
+.calendar .day.today.sel{background:#fff!important}
+.calendar .day.today.sel .day-number{color:#111827!important}
+.calendar .cal-label.task{background:#dff3df!important;color:#111827!important}
+.calendar .cal-label.event{background:#dbeafe!important;color:#111827!important}
+.calendar .cal-label.countdown{background:#e8f5ee!important;color:#111827!important}
+.calendar .cal-label.long{background:#dff3df!important;color:#111827!important}
+.day-action-list{display:flex;flex-direction:column;gap:8px}
+.day-action{width:100%;text-align:left;background:#f5f6f8;border-radius:13px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.day-action small{color:#777;font-size:12px}
 </style>
