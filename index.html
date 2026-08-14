@@ -16,7 +16,7 @@ header{display:flex;justify-content:space-between;align-items:center;padding:8px
 .check{width:25px;height:25px;border:1.5px solid #bbb;border-radius:50%;flex:none}.check.done{background:#111827;color:#fff;border-color:#111827;display:grid;place-items:center}
 .task{flex:1;text-align:left}.title{font-size:16px}.meta{font-size:12px;color:#777;margin-top:4px}.days{font-weight:800;white-space:nowrap}.danger{color:#c0392b}.today{color:#087f5b}.empty{padding:16px;color:#777}
 .count{width:100%;padding:16px;display:flex;text-align:left;align-items:center;gap:12px}.count .days{margin-left:auto;font-size:18px}
-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);border-top:1px solid #e7e7eb;padding:9px 10px;display:flex;justify-content:center;gap:8px;z-index:50}nav a{padding:8px 15px;border-radius:12px;color:#777;text-decoration:none}nav a.active{background:#eef0f3;color:#17181b;font-weight:700}nav button.active{background:#eef0f3;color:#17181b;font-weight:700}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);border-top:1px solid #e7e7eb;padding:9px 10px;display:flex;justify-content:center;gap:8px;z-index:9999;pointer-events:auto}nav a{padding:8px 15px;border-radius:12px;color:#777;text-decoration:none}nav a.active{background:#eef0f3;color:#17181b;font-weight:700}nav button.active{background:#eef0f3;color:#17181b;font-weight:700}
 .modal{position:fixed;inset:0;background:#0005;display:none;align-items:flex-end;z-index:10}.modal.show{display:flex}.sheet{background:#fff;width:100%;max-width:760px;margin:auto auto 0;border-radius:24px 24px 0 0;padding:18px;max-height:90vh;overflow:auto}.sheet h2{margin:0 0 16px}
 .field{margin:12px 0}.field label{display:block;font-size:13px;color:#777;margin-bottom:6px}.field input{width:100%;padding:13px;border:1px solid #e7e7eb;border-radius:13px;background:#fafafa}
 .actions{display:flex;gap:10px;margin-top:18px}.primary,.secondary{flex:1;padding:13px;border-radius:13px;font-weight:700}.primary{background:#111827;color:#fff}.secondary{background:#eef0f3}
@@ -26,8 +26,8 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 </head>
 <body>
 <div id="app" class="app"></div>
-<nav id="bottomNav"><a class="active" href="./index.html">ホーム</a><a href="./calendar.html">カレンダー</a></nav>
+<nav id="bottomNav"><a class="active" href="./index.html">ホーム</a><a id="calendarLink" href="./calendar.html" onclick="window.location.href='./calendar.html';return false;">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script src="./app.js?v=9"></script>
+<script src="./app.js?v=10"></script>
 </body>
 </html>
