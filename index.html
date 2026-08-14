@@ -8,18 +8,41 @@
 <title>TaskDay</title>
 <style>
 :root{--bg:#f5f6f8;--card:#fff;--text:#17181b;--muted:#777;--line:#e7e7eb;--accent:#111827;--done:#9aa0a6}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Hiragino Sans",sans-serif}
-button,input{font:inherit}button{border:0;background:none;color:inherit} .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px 90px}
-header{padding:24px 4px 12px;display:flex;justify-content:space-between;align-items:center}h1{font-size:30px;margin:0}.date{color:var(--muted);font-size:14px;margin-top:4px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Hiragino Sans",sans-serif}
+button,input{font:inherit}
+button{border:0;background:none;color:inherit}
+.app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px 90px}
+header{padding:24px 4px 12px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:30px;margin:0}.date{color:var(--muted);font-size:14px;margin-top:4px}
 .add{background:var(--accent);color:#fff;border-radius:14px;width:46px;height:46px;font-size:26px}
-.section{margin-top:22px}.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 9px}.section-title{font-size:18px;font-weight:700}.small{font-size:13px;color:var(--muted)}
+.section{margin-top:22px}.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 9px}
+.section-title{font-size:18px;font-weight:700}.small{font-size:13px;color:var(--muted)}
+.link{color:#356ae6;font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;margin-bottom:9px;overflow:hidden}
-.row{display:flex;align-items:center;gap:12px;padding:15px}.check{width:25px;height:25px;border:1.5px solid #bbb;border-radius:50%;flex:none}.check.done{background:var(--accent);border-color:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px}.title{font-size:16px}.doneText{text-decoration:line-through;color:var(--done)}.meta{font-size:12px;color:var(--muted);margin-top:4px}.days{margin-left:auto;font-weight:700;white-space:nowrap}.danger{color:#c0392b}.today{color:#087f5b}.empty{padding:16px;color:var(--muted);font-size:14px}
-.countdown{padding:16px;display:flex;align-items:center;gap:12px}.countdown .name{font-weight:700}.countdown .remaining{margin-left:auto;font-size:18px;font-weight:800}
-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);border-top:1px solid var(--line);padding:9px 10px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:8px;z-index:5}nav button{padding:8px 15px;border-radius:12px;color:var(--muted)}nav button.active{background:#eef0f3;color:var(--text);font-weight:700}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;z-index:10}.modal.show{display:flex}.sheet{background:var(--card);width:100%;max-width:760px;margin:auto auto 0;border-radius:24px 24px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}.sheet h2{margin:0 0 16px}.field{margin:12px 0}.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}.field input,.field select{width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fafafa}.actions{display:flex;gap:10px;margin-top:18px}.primary,.secondary{flex:1;padding:13px;border-radius:13px;font-weight:700}.primary{background:var(--accent);color:#fff}.secondary{background:#eef0f3}
-.calendar{padding:14px}.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.cal-head button{font-size:22px;padding:5px 10px}.cal-title{font-weight:700}.week,.daysgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.week div{text-align:center;color:var(--muted);font-size:12px;padding:4px}.day{min-height:43px;border-radius:10px;display:grid;place-items:center;position:relative}.day.other{color:#bbb}.day.sel{background:var(--accent);color:#fff}.day.has{font-weight:700}.dot{position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor}.detail{padding:0 14px 14px}.toolbar{display:flex;justify-content:space-between;align-items:center;margin:10px 0}.link{color:#356ae6;font-weight:600}.hidden{display:none}
-.taskMain{border:0;background:none;padding:0;color:inherit}.countdown{border:0;background:none;padding:16px;display:flex;align-items:center;gap:12px}.day{touch-action:manipulation;user-select:none;cursor:pointer}.day:active{transform:scale(.96)}
+.row{display:flex;align-items:center;gap:12px;padding:15px}
+.check{width:25px;height:25px;border:1.5px solid #bbb;border-radius:50%;flex:none}
+.check.done{background:var(--accent);border-color:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px}
+.taskMain{border:0;background:none;padding:0;color:inherit;text-align:left;flex:1;min-width:0}
+.title{font-size:16px}.doneText{text-decoration:line-through;color:var(--done)}
+.meta{font-size:12px;color:var(--muted);margin-top:4px}.days{margin-left:auto;font-weight:700;white-space:nowrap}
+.danger{color:#c0392b}.today{color:#087f5b}
+.empty{padding:16px;color:var(--muted);font-size:14px}
+.countdown{width:100%;display:flex;align-items:center;gap:12px;padding:16px;text-align:left}
+.countdown .name{font-weight:700}.countdown .remaining{margin-left:auto;font-size:18px;font-weight:800}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);border-top:1px solid var(--line);padding:9px 10px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:8px;z-index:5}
+nav button{padding:8px 15px;border-radius:12px;color:var(--muted)}nav button.active{background:#eef0f3;color:var(--text);font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;z-index:10}.modal.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:760px;margin:auto auto 0;border-radius:24px 24px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h2{margin:0 0 16px}.field{margin:12px 0}.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fafafa}
+.actions{display:flex;gap:10px;margin-top:18px}.primary,.secondary{flex:1;padding:13px;border-radius:13px;font-weight:700}.primary{background:var(--accent);color:#fff}.secondary{background:#eef0f3}
+.calendar{padding:14px}.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.cal-head button{font-size:22px;padding:5px 10px}.cal-title{font-weight:700}
+.week,.daysgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.week div{text-align:center;color:var(--muted);font-size:12px;padding:4px}
+.day{min-height:43px;border-radius:10px;display:grid;place-items:center;position:relative;touch-action:manipulation;user-select:none;cursor:pointer}
+.day:active{transform:scale(.96)}.day.other{color:#bbb}.day.sel{background:var(--accent);color:#fff}.day.has{font-weight:700}
+.dot{position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor}
+.detail{padding:0 14px 14px}.toolbar{display:flex;justify-content:space-between;align-items:center;margin:10px 0}.hidden{display:none}
 </style>
 </head>
 <body>
@@ -29,13 +52,14 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);bord
 <button id="calTab">カレンダー</button>
 </nav>
 <div id="modal" class="modal"><div class="sheet" id="sheet"></div></div>
-
 <script>
-const KEY="taskday-v2";
-let state=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem("taskday-v1")||'{"tasks":[],"countdowns":[],"completed":[]}');
+const KEY="taskday-v3";
+let state=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem("taskday-v2")||localStorage.getItem("taskday-v1")||'{"tasks":[],"countdowns":[],"completed":[]}');
 state.tasks=(state.tasks||[]).filter(t=>t.type!=="daily");
-state.countdowns=state.countdowns||[]; state.completed=state.completed||[];
-let view="home", calDate=new Date(), selectedDate=new Date();
+state.countdowns=state.countdowns||[];
+state.completed=state.completed||[];
+let view="home",calDate=new Date(),selectedDate=new Date();
+
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{let x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`};
@@ -45,41 +69,236 @@ const daysLeft=d=>{let a=new Date();a.setHours(0,0,0,0);let b=fromKey(typeof d==
 const fmt=d=>fromKey(typeof d==="string"?d:key(d)).toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric"});
 const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 const rem=d=>{let n=daysLeft(d);return n>0?"あと"+n+"日":n===0?"今日":Math.abs(n)+"日経過"};
-function refresh(){let wk=mondayKey(new Date());state.tasks.forEach(t=>{if(t.type==="weekly"&&t.reset!==wk){t.done=false;t.reset=wk}});save()}
-function complete(id){let t=state.tasks.find(x=>x.id===id);if(!t)return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completed.unshift({...t,done:true,completedAt:new Date().toISOString()});state.completed=state.completed.slice(0,5);save();render()}
+
+function refresh(){
+ const wk=mondayKey(new Date());
+ state.tasks.forEach(t=>{
+   if(t.type==="weekly"&&t.reset!==wk){t.done=false;t.reset=wk}
+ });
+ save();
+}
+
+function complete(id){
+ const t=state.tasks.find(x=>x.id===id);
+ if(!t)return;
+ state.tasks=state.tasks.filter(x=>x.id!==id);
+ state.completed.unshift({...t,done:true,completedAt:new Date().toISOString()});
+ state.completed=state.completed.slice(0,5);
+ save();render();
+}
+
 function taskCard(t){
  const meta=t.date?`<div class="meta">${t.type==="short"?"短期":"長期"} ・ ${fmt(t.date)}</div>`:"";
  const days=t.date?`<div class="days ${daysLeft(t.date)<0?"danger":daysLeft(t.date)===0?"today":""}">${rem(t.date)}</div>`:"";
- return `<div class="card"><div class="row"><button class="check" data-complete="${t.id}"></button><button class="taskMain" data-long="${t.id}"><div class="title">${esc(t.title)}</div>${meta}</button>${days}</div></div>`;
+ return `<div class="card"><div class="row">
+   <button class="check" data-complete="${t.id}" aria-label="完了"></button>
+   <button class="taskMain" data-long="${t.id}"><div class="title">${esc(t.title)}</div>${meta}</button>
+   ${days}
+ </div></div>`;
 }
-function countdownCard(c){return `<div class="card"><button class="countdown" data-countlong="${c.id}"><div><div class="name">${esc(c.title)}</div><div class="meta">${fmt(c.date)}</div></div><div class="remaining ${daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":""}">${rem(c.date)}</div></button></div>`}
+
+function countdownCard(c){
+ return `<div class="card"><button class="countdown" data-countlong="${c.id}">
+   <div><div class="name">${esc(c.title)}</div><div class="meta">${fmt(c.date)}</div></div>
+   <div class="remaining ${daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":""}">${rem(c.date)}</div>
+ </button></div>`;
+}
+
 function bind(){
  document.querySelectorAll("[data-complete]").forEach(b=>b.onclick=e=>{e.stopPropagation();complete(b.dataset.complete)});
- const long=(el,fn)=>{let t;el.addEventListener("pointerdown",()=>t=setTimeout(fn,600));["pointerup","pointercancel","pointerleave"].forEach(x=>el.addEventListener(x,()=>clearTimeout(t)))};
- document.querySelectorAll("[data-long]").forEach(e=>long(e,()=>taskActions(e.dataset.long)));
- document.querySelectorAll("[data-countlong]").forEach(e=>long(e,()=>countActions(e.dataset.countlong)));
+ const longPress=(el,fn)=>{
+   let timer;
+   const start=()=>timer=setTimeout(fn,600);
+   const stop=()=>clearTimeout(timer);
+   el.addEventListener("pointerdown",start);
+   ["pointerup","pointercancel","pointerleave"].forEach(x=>el.addEventListener(x,stop));
+ };
+ document.querySelectorAll("[data-long]").forEach(e=>longPress(e,()=>taskActions(e.dataset.long)));
+ document.querySelectorAll("[data-countlong]").forEach(e=>longPress(e,()=>countActions(e.dataset.countlong)));
 }
+
 function renderHome(){
  refresh();
- let weekly=state.tasks.filter(t=>t.type==="weekly"),
-     short=state.tasks.filter(t=>t.type==="short"),
-     long=state.tasks.filter(t=>t.type==="long"),
-     completed=state.completed;
- $("#app").innerHTML=`<header><div><h1>TaskDay</h1><div class="date">${new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})}</div></div><button class="add" id="plus">＋</button></header>
- <div class="section"><div class="section-head"><div class="section-title">あと何日</div><button class="link" id="addC">追加</button></div>${state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addW">＋ 毎週のタスク</button><span class="small">毎週月曜に復活</span></div>${weekly.length?weekly.map(taskCard).join(""):'<div class="card empty">「＋ 毎週のタスク」をタップして追加</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addS">＋ 短期タスク</button></div>${short.length?short.map(taskCard).join(""):'<div class="card empty">「＋ 短期タスク」をタップして追加</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addL">＋ 長期タスク</button></div>${long.length?long.map(taskCard).join(""):'<div class="card empty">「＋ 長期タスク」をタップして追加</div>'}</div>
- <div class="section"><div class="section-head"><div class="section-title">完了済みタスク</div><span class="small">最新5件</span></div>${completed.length?completed.map(t=>`<div class="card"><div class="row"><div class="check done">✓</div><div style="flex:1"><div class="title doneText">${esc(t.title)}</div><div class="meta">${t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期"} ・ 完了済み</div></div><button class="link" data-restore="${t.id}">復活</button></div></div>`).join(""):'<div class="card empty">完了したタスクはここに保存されます</div>'}</div>`;
+ const weekly=state.tasks.filter(t=>t.type==="weekly");
+ const short=state.tasks.filter(t=>t.type==="short");
+ const long=state.tasks.filter(t=>t.type==="long");
+ const completed=state.completed;
+
+ $("#app").innerHTML=`<header>
+   <div><h1>TaskDay</h1><div class="date">${new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})}</div></div>
+   <button class="add" id="plus" aria-label="短期タスク追加">＋</button>
+ </header>
+
+ <div class="section"><div class="section-head"><div class="section-title">あと何日</div><button class="link" id="addC">追加</button></div>
+   ${state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>'}
+ </div>
+
+ <div class="section"><div class="section-head"><button class="section-title link" id="addW">＋ 毎週のタスク</button><span class="small">毎週月曜に復活</span></div>
+   ${weekly.length?weekly.map(taskCard).join(""):'<div class="card empty">「＋ 毎週のタスク」をタップして追加</div>'}
+ </div>
+
+ <div class="section"><div class="section-head"><button class="section-title link" id="addS">＋ 短期タスク</button></div>
+   ${short.length?short.map(taskCard).join(""):'<div class="card empty">「＋ 短期タスク」をタップして追加</div>'}
+ </div>
+
+ <div class="section"><div class="section-head"><button class="section-title link" id="addL">＋ 長期タスク</button></div>
+   ${long.length?long.map(taskCard).join(""):'<div class="card empty">「＋ 長期タスク」をタップして追加</div>'}
+ </div>
+
+ <div class="section"><div class="section-head"><div class="section-title">完了済みタスク</div><span class="small">最新5件</span></div>
+   ${completed.length?completed.map(t=>`<div class="card"><div class="row">
+     <div class="check done">✓</div><div style="flex:1">
+       <div class="title doneText">${esc(t.title)}</div>
+       <div class="meta">${t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期"} ・ 完了済み</div>
+     </div>
+     <button class="link" data-restore="${t.id}">復活</button>
+   </div></div>`).join(""):'<div class="card empty">完了したタスクはここに保存されます</div>'}
+ </div>`;
+
  $("#plus").onclick=()=>openTask("short");
  $("#addC").onclick=openCountdown;
  $("#addW").onclick=()=>openTask("weekly");
  $("#addS").onclick=()=>openTask("short");
  $("#addL").onclick=()=>openTask("long");
+
  document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>{
-   let t=state.completed.find(x=>x.id===b.dataset.restore);
-   if(t){state.completed=state.completed.filter(x=>x.id!==t.id);t.done=false;delete t.completedAt;state.tasks.push(t);save();render()}
+   const t=state.completed.find(x=>x.id===b.dataset.restore);
+   if(t){
+     state.completed=state.completed.filter(x=>x.id!==t.id);
+     t.done=false;delete t.completedAt;
+     state.tasks.push(t);save();render();
+   }
  });
  bind();
 }
->
+
+function openTask(type="short",date=null,id=null){
+ const old=id&&state.tasks.find(x=>x.id===id);
+ const actualType=old?.type||type;
+ const initial=date||old?.date||key(new Date());
+ const titleLabel=actualType==="weekly"?"毎週のタスク":actualType==="long"?"長期タスク":"短期タスク";
+ const dateField=actualType==="weekly"?"":`<div class="field"><label>締め切り日</label><input id="td" type="date" value="${initial}"></div>`;
+
+ $("#sheet").innerHTML=`<h2>${old?"タスクを編集":titleLabel+"を追加"}</h2>
+ <div class="field"><label>タスク名</label><input id="tt" value="${esc(old?.title||"")}" placeholder="例：${actualType==="weekly"?"部屋を掃除する":"レポート"}"></div>
+ ${dateField}
+ <div class="actions"><button class="secondary" id="cx">キャンセル</button><button class="primary" id="ok">保存</button></div>`;
+
+ $("#modal").classList.add("show");
+ $("#cx").onclick=closeModal;
+ $("#ok").onclick=()=>{
+   const title=$("#tt").value.trim();
+   if(!title)return;
+   const d=actualType==="weekly"?null:$("#td").value;
+   if(old){
+     old.title=title;old.type=actualType;old.date=d;
+     old.reset=actualType==="weekly"?mondayKey(new Date()):"";
+   }else{
+     state.tasks.push({id:crypto.randomUUID(),title,type:actualType,date:d,done:false,reset:actualType==="weekly"?mondayKey(new Date()):""});
+   }
+   save();closeModal();render();
+ };
+}
+
+function taskActions(id){
+ const t=state.tasks.find(x=>x.id===id);
+ if(!t)return;
+ $("#sheet").innerHTML=`<h2>${esc(t.title)}</h2>
+ <div class="actions"><button class="secondary" id="ed">編集</button><button class="primary" id="rm">削除</button></div>`;
+ $("#modal").classList.add("show");
+ $("#ed").onclick=()=>{closeModal();openTask(t.type,t.date,t.id)};
+ $("#rm").onclick=()=>{complete(t.id);closeModal()};
+}
+
+function openCountdown(date=null,id=null){
+ const old=id&&state.countdowns.find(x=>x.id===id);
+ $("#sheet").innerHTML=`<h2>${old?"あと何日を編集":"あと何日を追加"}</h2>
+ <div class="field"><label>名前</label><input id="ct" value="${esc(old?.title||"")}" placeholder="例：TOEFL"></div>
+ <div class="field"><label>目標日</label><input id="cd" type="date" value="${old?.date||date||key(new Date())}"></div>
+ <div class="actions"><button class="secondary" id="cx">キャンセル</button><button class="primary" id="ok">保存</button></div>`;
+ $("#modal").classList.add("show");
+ $("#cx").onclick=closeModal;
+ $("#ok").onclick=()=>{
+   const title=$("#ct").value.trim();
+   if(!title)return;
+   if(old){old.title=title;old.date=$("#cd").value}
+   else state.countdowns.push({id:crypto.randomUUID(),title,date:$("#cd").value});
+   save();closeModal();render();
+ };
+}
+
+function countActions(id){
+ const c=state.countdowns.find(x=>x.id===id);
+ if(!c)return;
+ $("#sheet").innerHTML=`<h2>${esc(c.title)}</h2>
+ <div class="actions"><button class="secondary" id="ed">編集</button><button class="primary" id="rm">削除</button></div>`;
+ $("#modal").classList.add("show");
+ $("#ed").onclick=()=>{closeModal();openCountdown(null,c.id)};
+ $("#rm").onclick=()=>{state.countdowns=state.countdowns.filter(x=>x.id!==id);save();closeModal();render()};
+}
+
+function renderCalendar(){
+ const y=calDate.getFullYear(),m=calDate.getMonth();
+ const first=new Date(y,m,1),start=new Date(first);
+ start.setDate(1-first.getDay());
+ let cells="";
+ for(let i=0;i<42;i++){
+   const d=new Date(start);d.setDate(start.getDate()+i);
+   const k=key(d),sel=k===key(selectedDate);
+   const has=state.tasks.some(t=>t.date===k)||state.countdowns.some(c=>c.date===k);
+   cells+=`<button type="button" class="day ${d.getMonth()!==m?"other":""} ${sel?"sel":""} ${has?"has":""}" data-day="${k}"><span>${d.getDate()}</span>${has?'<span class="dot"></span>':""}</button>`;
+ }
+
+ const k=key(selectedDate);
+ const tasks=state.tasks.filter(t=>t.date===k);
+ const counts=state.countdowns.filter(c=>c.date===k);
+ const longs=tasks.filter(t=>t.type==="long");
+ const shorts=tasks.filter(t=>t.type==="short");
+
+ $("#app").innerHTML=`<header><div><h1>カレンダー</h1><div class="date">日付を選んで確認・追加</div></div></header>
+ <div class="card calendar"><div class="cal-head"><button id="prev">‹</button><div class="cal-title">${y}年 ${m+1}月</div><button id="next">›</button></div>
+ <div class="week">${["日","月","火","水","木","金","土"].map(x=>`<div>${x}</div>`).join("")}</div>
+ <div class="daysgrid">${cells}</div></div>
+
+ <div class="detail"><div class="toolbar"><strong>${fmt(selectedDate)}</strong><button class="link" id="addST">＋ 短期タスク</button></div>
+ ${shorts.map(taskCard).join("")||'<div class="card empty">この日の短期タスクはありません</div>'}
+
+ <div class="section"><div class="section-head"><div class="section-title">あと何日の内容</div><button class="link" id="addCD">追加</button></div>
+ ${counts.map(countdownCard).join("")||'<div class="card empty">この日が目標日のものはありません</div>'}</div>
+
+ <div class="section"><div class="section-head"><button class="section-title link" id="addLT">＋ 長期タスク</button></div>
+ ${longs.map(taskCard).join("")||'<div class="card empty">この日の長期タスクはありません</div>'}</div></div>`;
+
+ $("#prev").onclick=()=>{calDate=new Date(y,m-1,1);renderCalendar()};
+ $("#next").onclick=()=>{calDate=new Date(y,m+1,1);renderCalendar()};
+ document.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{selectedDate=fromKey(b.dataset.day);renderCalendar()});
+ $("#addST").onclick=()=>openTask("short",k);
+ $("#addLT").onclick=()=>openTask("long",k);
+ $("#addCD").onclick=()=>openCountdown(k);
+ bind();
+}
+
+function closeModal(){$("#modal").classList.remove("show")}
+
+const homeTab=document.getElementById("homeTab");
+const calTab=document.getElementById("calTab");
+
+function render(){
+ homeTab.classList.toggle("active",view==="home");
+ calTab.classList.toggle("active",view==="cal");
+ if(view==="home")renderHome();else renderCalendar();
+}
+
+homeTab.onclick=()=>{view="home";render()};
+calTab.onclick=()=>{view="cal";render()};
+$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
+
+refresh();
+save();
+render();
+</script>
+<script>
+if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}
+</script>
+</body>
+</html>
