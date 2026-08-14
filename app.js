@@ -70,7 +70,7 @@ state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
  '<div class="section"><button class="section-title link" id="completedToggle">完了済みタスク</button>'+
  '<div id="completedPanel" style="display:none;margin-top:9px">'+
  (state.completed.length?state.completed.map(t=>
- '<div class="card"><div class="row"><div class="check done">✓</div><div style="flex:1"><div class="title" style="text-decoration:line-through;color:#9aa0a6">'+esc(t.title)+'</div><div class="meta">'+(t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期")+' ・ 完了済み</div></div><button class="check done restore-check" data-restore="'+t.id+'" aria-label="復活">✓</button></div></div>'
+ '<div class="card"><div class="row"><button class="check done" data-restore="'+t.id+'" aria-label="復活">✓</button><div style="flex:1"><div class="title" style="text-decoration:line-through;color:#9aa0a6">'+esc(t.title)+'</div><div class="meta">'+(t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期")+' ・ 完了済み</div></div></div></div>'
  ).join(""):'<div class="card empty">完了したタスクはありません</div>')+
  '</div></div>'+
  '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
