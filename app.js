@@ -103,11 +103,12 @@ function renderCalendar(){
  bind();
 }
 function render(){if(view==="home")renderHome();else renderCalendar();$("#homeTab").classList.toggle("active",view==="home");$("#calTab").classList.toggle("active",view==="cal")}
-document.addEventListener("click",e=>{
-  if(e.target.closest("#homeTab")){view="home";render();return}
-  if(e.target.closest("#calTab")){view="cal";render();return}
-  if(e.target.id==="modal")closeModal();
-});
-refresh();render();
+window.switchView=function(next){
+  view=next==="cal"?"cal":"home";
+  render();
+};
+$("#modal").addEventListener("click",function(e){if(e.target.id==="modal")closeModal()});
+refresh();
+render();
 window.TaskDay={render,openTask,openCountdown};
 })();
