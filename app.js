@@ -73,19 +73,62 @@ function showModal(){
   });
 }
 function closeModal(){$("#modal").classList.remove("show");document.body.classList.remove("modal-open")}
+
+function jpHolidays(y){
+ const set=new Set();
+ const add=(m,d)=>set.add(`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);
+ add(1,1); // 元日
+ add(2,11); // 建国記念の日
+ add(2,23); // 天皇誕生日
+ add(4,29); // 昭和の日
+ add(5,3); add(5,4); add(5,5); // 憲法記念日・みどりの日・こどもの日
+ add(7,20); // 海の日（2026）
+ add(8,11); // 山の日
+ add(11,3); add(11,23); // 文化の日・勤労感謝の日
+ // 成人の日：1月第2月曜
+ let d=new Date(y,0,1); d.setDate(1+(8-d.getDay()+7)%7); add(1,d.getDate()+7);
+ // 海の日以外の移動祝日
+ d=new Date(y,8,1); d.setDate(1+(1-d.getDay()+7)%7); add(9,d.getDate()+14); // 敬老の日: 第3月曜
+ d=new Date(y,9,1); d.setDate(1+(1-d.getDay()+7)%7); add(10,d.getDate()+7); // スポーツの日: 第2月曜
+ // 春分・秋分（簡易計算、実用上のカレンダー範囲）
+ const vernal=Math.floor(20.8431+0.242194*(y-1980)-Math.floor((y-1980)/4));
+ const autumn=Math.floor(23.2488+0.242194*(y-1980)-Math.floor((y-1980)/4));
+ add(3,vernal); add(9,autumn);
+ // 振替休日（日曜の祝日を翌平日に）
+ const original=[...set];
+ original.forEach(k=>{
+   const dt=fromKey(k);
+   if(dt.getDay()===0){
+     let nd=new Date(dt); nd.setDate(nd.getDate()+1);
+     while(set.has(key(nd))) nd.setDate(nd.getDate()+1);
+     set.add(key(nd));
+   }
+ });
+ // 国民の休日（祝日に挟まれた平日）
+ for(let m=1;m<=12;m++) for(let day=2;day<=30;day++){
+   const dt=new Date(y,m-1,day);
+   if(dt.getDay()===0||dt.getDay()===6) continue;
+   const prev=new Date(dt); prev.setDate(day-1);
+   const next=new Date(dt); next.setDate(day+1);
+   if(set.has(key(prev))&&set.has(key(next))) set.add(key(dt));
+ }
+ return set;
+}
+
 function renderCalendar(){
  const y=calDate.getFullYear(),m=calDate.getMonth(),first=new Date(y,m,1),start=new Date(first);
  start.setDate(1-first.getDay());
  let cells="";
  for(let i=0;i<42;i++){
    const d=new Date(start);d.setDate(start.getDate()+i);
-   const k=key(d),sel=k===key(selectedDate);
+   const k=key(d),sel=k===key(selectedDate),holiday=jpHolidays(d.getFullYear()).has(k),dow=d.getDay();
    const labels=[
-     ...state.tasks.filter(t=>t.date===k).map(t=>({text:t.title,type:t.type})),
+     ...state.tasks.filter(t=>t.date===k && (t.type==="short"||t.type==="long")).map(t=>({text:t.title,type:t.type})),
      ...state.countdowns.filter(c=>c.date===k).map(c=>({text:c.title,type:"countdown"}))
    ];
-   const labelHtml=labels.slice(0,4).map(x=>'<span class="cal-label '+x.type+'">'+esc(x.text)+'</span>').join("");
-   cells+='<button class="day '+(d.getMonth()!==m?"other ":"")+(sel?"sel ":"")+'" data-day="'+k+'"><span class="day-number">'+d.getDate()+'</span><span class="cal-labels">'+labelHtml+'</span></button>';
+   const labelHtml=labels.slice(0,5).map(x=>'<span class="cal-label '+x.type+'">'+esc(x.text)+'</span>').join("");
+   const dayClass=(d.getMonth()!==m?"other ":"")+(sel?"sel ":"")+(holiday?"holiday ":"")+(dow===0?"sunday ":"")+(dow===6?"saturday ":"");
+   cells+='<button class="day '+dayClass+'" data-day="'+k+'"><span class="day-number">'+d.getDate()+'</span><span class="cal-labels">'+labelHtml+'</span></button>';
  }
  const k=key(selectedDate);
  const short=state.tasks.filter(t=>t.type==="short"&&t.date===k);
