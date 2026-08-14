@@ -29,6 +29,41 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 <div id="app" class="app"></div>
 <nav id="bottomNav"><a class="active" href="./index.html">ホーム</a><a href="./calendar.html">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script src="./app.js?v=13"></script>
+<script src="./app.js?v=14"></script>
 </body>
 </html>
+
+<style>
+/* v14: modal centered above the bottom navigation */
+.modal{
+  position:fixed!important;
+  inset:0!important;
+  z-index:10000!important;
+  display:none;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:24px!important;
+  box-sizing:border-box!important;
+}
+.modal.show{
+  display:flex!important;
+}
+.modal .sheet{
+  position:relative!important;
+  width:min(680px, 100%)!important;
+  max-height:calc(100vh - 48px)!important;
+  margin:0!important;
+  overflow-y:auto!important;
+  border-radius:28px!important;
+  padding:28px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:700px){
+  .modal{padding:16px!important}
+  .modal .sheet{
+    max-height:calc(100vh - 32px)!important;
+    border-radius:24px!important;
+    padding:22px!important;
+  }
+}
+</style>
