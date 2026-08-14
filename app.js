@@ -21,7 +21,33 @@ function refresh(){
  state.completed=state.completed.slice(0,5);
  save();
 }
-function complete(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completed.unshift({...t,done:true,completedAt:Date.now()});state.completed=state.completed.slice(0,5);save();render()}
+function complete(id){
+ const el=document.querySelector('[data-complete="'+id+'"]');
+ if(!el)return;
+ window.__completeTimers=window.__completeTimers||{};
+ if(el.dataset.pending==="1"){
+   clearTimeout(window.__completeTimers[id]);
+   delete window.__completeTimers[id];
+   delete el.dataset.pending;
+   const card=el.closest(".card");
+   if(card)card.classList.remove("completing");
+   return;
+ }
+ el.dataset.pending="1";
+ const card=el.closest(".card");
+ if(card)card.classList.add("completing");
+ window.__completeTimers[id]=setTimeout(()=>{
+   if(el.dataset.pending!=="1")return;
+   const t=state.tasks.find(x=>x.id===id);
+   if(t){
+     state.tasks=state.tasks.filter(x=>x.id!==id);
+     state.completed.unshift({...t,done:true,completedAt:Date.now()});
+     state.completed=state.completed.slice(0,5);
+     save();render();
+   }
+   delete window.__completeTimers[id];
+ },3000);
+}
 function taskCard(t){return '<div class="card"><div class="row"><button class="check" data-complete="'+t.id+'"></button><button class="task" data-edit="'+t.id+'"><div class="title">'+esc(t.title)+'</div>'+(t.date?'<div class="meta">'+(t.type==="long"?"長期":"短期")+" ・ "+fmt(t.date)+'</div>':"")+'</button>'+(t.date?'<div class="days '+(daysLeft(t.date)<0?"danger":daysLeft(t.date)===0?"today":"")+'">'+rem(t.date)+'</div>':"")+'</div></div>'}
 function countdownCard(c){return '<div class="card"><button class="count" data-count="'+c.id+'"><div><b>'+esc(c.title)+'</b><div class="meta">'+fmt(c.date)+'</div></div><div class="days '+(daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":"")+'">'+rem(c.date)+'</div></button></div>'}
 function renderHome(){
@@ -35,10 +61,10 @@ function renderHome(){
 state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
  $("#app").innerHTML=
  '<header><div><h1>TaskDay</h1><div class="date">'+new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})+'</div></div><button class="add" id="plus">＋</button></header>'+
- '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
- (state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>')+'</div>'+
  section("＋ 毎週のタスク","addW",w,true)+
  section("＋ 短期タスク","addS",s,false)+
+ '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
+ (state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>')+'</div>'+
  '<div class="section"><button class="section-title link" id="completedToggle">完了済みタスク</button>'+
  '<div id="completedPanel" style="display:none;margin-top:9px">'+
  (state.completed.length?state.completed.map(t=>
@@ -196,16 +222,16 @@ function renderCalendar(){
    <div class="grid">${cells}</div>
  </div>
  <div class="section">
-   <div class="section-head"><button class="section-title link" id="addLT">＋ 長期タスク</button></div>
-   ${long.length?long.map(taskCard).join(""):'<div class="card empty">長期タスクはありません</div>'}
- </div>
- <div class="section">
    <div class="section-head"><b class="section-title">${fmt(selectedDate)}のタスク</b><button class="link" id="addST">＋ 短期タスク</button></div>
    ${short.map(taskCard).join("")||'<div class="card empty">この日の短期タスクはありません</div>'}
  </div>
  <div class="section">
    <div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addCD">追加</button></div>
    ${counts.map(countdownCard).join("")||'<div class="card empty">この日が目標日のものはありません</div>'}
+ </div>
+ <div class="section">
+   <div class="section-head"><button class="section-title link" id="addLT">＋ 長期タスク</button></div>
+   ${long.length?long.map(taskCard).join(""):'<div class="card empty">長期タスクはありません</div>'}
  </div>`;
 
  $("#prev").onclick=()=>{calDate=new Date(y,m-1,1);renderCalendar()};
