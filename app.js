@@ -64,7 +64,14 @@ function openTask(type,date,id){const old=id&&state.tasks.find(x=>x.id===id),t=o
 function taskActions(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;$("#sheet").innerHTML='<h2>'+esc(t.title)+'</h2><div class="actions"><button class="secondary" id="edit">編集</button><button class="primary" id="delete">削除</button></div>';showModal();$("#edit").onclick=()=>{closeModal();openTask(t.type,t.date,t.id)};$("#delete").onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==id);save();closeModal();render()}}
 function openCountdown(date,id){const old=id&&state.countdowns.find(x=>x.id===id),d=old?.date||date||key(new Date());$("#sheet").innerHTML='<h2>'+(old?"あと何日を編集":"あと何日を追加")+'</h2><div class="field"><label>名前</label><input id="ct" value="'+esc(old?.title||"")+'"></div><div class="field"><label>目標日</label><input id="cd" type="date" value="'+d+'"></div><div class="actions"><button class="secondary" id="cancel">キャンセル</button><button class="primary" id="ok">保存</button></div>';showModal();$("#cancel").onclick=closeModal;$("#ok").onclick=()=>{const title=$("#ct").value.trim();if(!title)return;if(old){old.title=title;old.date=$("#cd").value}else state.countdowns.push({id:crypto.randomUUID(),title,date:$("#cd").value});save();closeModal();render()}}
 function countActions(id){const c=state.countdowns.find(x=>x.id===id);if(!c)return;$("#sheet").innerHTML='<h2>'+esc(c.title)+'</h2><div class="actions"><button class="secondary" id="edit">編集</button><button class="primary" id="delete">削除</button></div>';showModal();$("#edit").onclick=()=>{closeModal();openCountdown(null,c.id)};$("#delete").onclick=()=>{state.countdowns=state.countdowns.filter(x=>x.id!==id);save();closeModal();render()}}
-function showModal(){$("#modal").classList.add("show");document.body.classList.add("modal-open")}
+function showModal(){
+  $("#modal").classList.add("show");
+  document.body.classList.add("modal-open");
+  requestAnimationFrame(()=>{
+    const input=$("#tt")||$("#ct");
+    if(input){input.focus();if(typeof input.select==="function")input.select();}
+  });
+}
 function closeModal(){$("#modal").classList.remove("show");document.body.classList.remove("modal-open")}
 function renderCalendar(){
  const y=calDate.getFullYear(),m=calDate.getMonth(),first=new Date(y,m,1),start=new Date(first);
