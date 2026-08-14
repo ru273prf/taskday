@@ -141,7 +141,13 @@ function authUI(){
   };
   w.querySelector("#auth-signup").onclick=async()=>{
     msg.textContent="登録中…";
-    const {data,error}=await sb.auth.signUp({email:email.value.trim(),password:pass.value});
+    const {data,error}=await sb.auth.signUp({
+  email: email.value.trim(),
+  password: pass.value,
+  options: {
+    emailRedirectTo: 'https://ru273prf.github.io/taskday/'
+  }
+});
     if(error)msg.textContent=error.message;
     else msg.textContent=data.session?"登録しました":"確認メールを確認してください。";
   };
