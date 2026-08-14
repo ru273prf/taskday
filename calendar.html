@@ -29,7 +29,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 <div id="app" class="app"></div>
 <nav id="bottomNav"><a href="./index.html">ホーム</a><a class="active" href="./calendar.html">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script>window.START_VIEW="cal";</script><script src="./app.js?v=19"></script>
+<script>window.START_VIEW="cal";</script><script src="./app.js?v=20"></script>
 </body>
 </html>
 
@@ -87,8 +87,10 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 .calendar .day.sunday .day-number,.calendar .day.holiday .day-number{color:#e53935!important}
 .calendar .day.saturday .day-number{color:#3567a8!important}
 .calendar .day.other .day-number{color:#b8b8b8!important}
-.calendar .day.sel{background:#111827!important}
-.calendar .day.sel .day-number{color:#fff!important}
+.calendar .day.sel{background:#fff!important;border:2px solid #d1d5db!important}
+.calendar .day.sel .day-number{color:inherit!important}
+.calendar .day.today.sel{border:2px solid #111827!important}
+.calendar .day.today.sel .day-number{color:#111827!important}
 .calendar .cal-labels{min-height:0!important}
 .calendar .cal-label{font-size:12px!important;line-height:1.25!important;padding:3px 5px!important;border-radius:3px!important}
 .calendar .week div:first-child{color:#e53935!important}

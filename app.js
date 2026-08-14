@@ -26,7 +26,12 @@ function taskCard(t){return '<div class="card"><div class="row"><button class="c
 function countdownCard(c){return '<div class="card"><button class="count" data-count="'+c.id+'"><div><b>'+esc(c.title)+'</b><div class="meta">'+fmt(c.date)+'</div></div><div class="days '+(daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":"")+'">'+rem(c.date)+'</div></button></div>'}
 function renderHome(){
  refresh();
- const w=state.tasks.filter(t=>t.type==="weekly"),s=state.tasks.filter(t=>t.type==="short").sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
+ const w=state.tasks.filter(t=>t.type==="weekly"),s=state.tasks.filter(t=>t.type==="short").sort((a,b)=>{
+   if(a.date&&!b.date)return -1;
+   if(!a.date&&b.date)return 1;
+   if(!a.date&&!b.date)return 0;
+   return a.date.localeCompare(b.date);
+ });
 state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
  $("#app").innerHTML=
  '<header><div><h1>TaskDay</h1><div class="date">'+new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})+'</div></div><button class="add" id="plus">＋</button></header>'+
@@ -86,7 +91,7 @@ function eventActions(id){
 function dateAddChoice(date){
  $("#sheet").innerHTML='<h2>'+fmt(date)+'に追加</h2><div class="actions" style="flex-direction:column"><button class="primary" id="addTask">短期タスクとして追加</button><button class="secondary" id="addEvent">予定として追加</button><button class="secondary" id="cancel">キャンセル</button></div>';
  showModal();
- $("#addTask").onclick=()=>{closeModal();openTask("short")};
+ $("#addTask").onclick=()=>{closeModal();openTask("short",date)};
  $("#addEvent").onclick=()=>{closeModal();openEvent(key(date))};
  $("#cancel").onclick=closeModal;
 }
