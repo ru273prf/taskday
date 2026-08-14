@@ -29,11 +29,15 @@ function complete(id){
    clearTimeout(window.__completeTimers[id]);
    delete window.__completeTimers[id];
    delete el.dataset.pending;
+   el.classList.remove("done");
+   el.textContent="";
    const card=el.closest(".card");
    if(card)card.classList.remove("completing");
    return;
  }
  el.dataset.pending="1";
+ el.classList.add("done");
+ el.textContent="✓";
  const card=el.closest(".card");
  if(card)card.classList.add("completing");
  window.__completeTimers[id]=setTimeout(()=>{
@@ -63,14 +67,14 @@ state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
  '<header><div><h1>TaskDay</h1><div class="date">'+new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})+'</div></div><button class="add" id="plus">＋</button></header>'+
  section("＋ 毎週のタスク","addW",w,true)+
  section("＋ 短期タスク","addS",s,false)+
- '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
- (state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>')+'</div>'+
  '<div class="section"><button class="section-title link" id="completedToggle">完了済みタスク</button>'+
  '<div id="completedPanel" style="display:none;margin-top:9px">'+
  (state.completed.length?state.completed.map(t=>
  '<div class="card"><div class="row"><div class="check done">✓</div><div style="flex:1"><div class="title" style="text-decoration:line-through;color:#9aa0a6">'+esc(t.title)+'</div><div class="meta">'+(t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期")+' ・ 完了済み</div></div><button class="link" data-restore="'+t.id+'">復活</button></div></div>'
  ).join(""):'<div class="card empty">完了したタスクはありません</div>')+
- '</div></div>';
+ '</div></div>'+
+ '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
+ (state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>')+'</div>';
 
  $("#plus").onclick=()=>openTask("short");
  $("#addC").onclick=()=>openCountdown();

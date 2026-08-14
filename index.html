@@ -29,7 +29,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 <div id="app" class="app"></div>
 <nav id="bottomNav"><a class="active" href="./index.html">ホーム</a><a href="./calendar.html">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script src="./app.js?v=22"></script>
+<script src="./app.js?v=23"></script>
 </body>
 </html>
 
@@ -65,5 +65,19 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
     border-radius:24px!important;
     padding:22px!important;
   }
+}
+</style>
+
+<style>
+.card.completing{
+  background:#e5e7eb!important;
+  border-color:#d1d5db!important;
+  opacity:.72;
+  transition:background .15s ease,opacity .15s ease;
+}
+.card.completing .check.done{
+  background:#4b5563!important;
+  border-color:#4b5563!important;
+  color:#fff!important;
 }
 </style>
