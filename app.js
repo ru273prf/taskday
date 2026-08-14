@@ -5,7 +5,7 @@ if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
-const fromKey=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
+const fromKey=k=>{if(k instanceof Date)return new Date(k);const [y,m,d]=String(k).split("-").map(Number);return new Date(y,m-1,d)};
 const mondayKey=d=>{const x=new Date(d);const n=x.getDay();x.setDate(x.getDate()-(n===0?6:n-1));return key(x)};
 const daysLeft=d=>{const a=new Date();a.setHours(0,0,0,0);return Math.round((fromKey(d)-a)/86400000)};
 const fmt=d=>fromKey(d).toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric"});
