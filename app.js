@@ -10,7 +10,7 @@ const fmt=d=>fromKey(d).toLocaleDateString("ja-JP",{year:"numeric",month:"long",
 const rem=d=>{const n=daysLeft(d);return n>0?"あと"+n+"日":n===0?"今日":Math.abs(n)+"日経過"};
 let state;try{state=JSON.parse(localStorage.getItem("taskday-v3")||localStorage.getItem("taskday-v2")||'{"tasks":[],"countdowns":[],"completed":[]}')}catch(e){state={tasks:[],countdowns:[],completed:[]}}
 state.tasks=(state.tasks||[]).filter(t=>t.type!=="daily");state.countdowns=state.countdowns||[];state.completed=state.completed||[];
-let view="home",calDate=new Date(),selectedDate=new Date();
+let view=window.START_VIEW||"home",calDate=new Date(),selectedDate=new Date();
 const save=()=>localStorage.setItem("taskday-v3",JSON.stringify(state));
 function refresh(){const wk=mondayKey(new Date());state.tasks.forEach(t=>{if(t.type==="weekly"&&t.reset!==wk){t.done=false;t.reset=wk}});state.completed=state.completed.slice(0,5);save()}
 function complete(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completed.unshift({...t,done:true,completedAt:Date.now()});state.completed=state.completed.slice(0,5);save();render()}
@@ -103,11 +103,7 @@ function renderCalendar(){
  bind();
 }
 function render(){if(view==="home")renderHome();else renderCalendar();$("#homeTab").classList.toggle("active",view==="home");$("#calTab").classList.toggle("active",view==="cal")}
-window.switchView=function(next){
-  view=next==="cal"?"cal":"home";
-  render();
-};
-$("#modal").addEventListener("click",function(e){if(e.target.id==="modal")closeModal()});
+if($("#modal"))$("#modal").addEventListener("click",function(e){if(e.target.id==="modal")closeModal()});
 refresh();
 render();
 window.TaskDay={render,openTask,openCountdown};
