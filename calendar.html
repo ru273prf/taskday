@@ -29,7 +29,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 <div id="app" class="app"></div>
 <nav id="bottomNav"><a href="./index.html">ホーム</a><a class="active" href="./calendar.html">カレンダー</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
-<script>window.START_VIEW="cal";</script><script src="./app.js?v=15"></script>
+<script>window.START_VIEW="cal";</script><script src="./app.js?v=16"></script>
 </body>
 </html>
 
@@ -66,4 +66,15 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
     padding:22px!important;
   }
 }
+</style>
+
+<style>
+.day{position:relative!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;overflow:hidden!important;padding:8px 6px!important;text-align:left!important}
+.day-number{display:block!important;font-size:16px!important;font-weight:600!important;margin-bottom:3px!important}
+.cal-labels{display:flex!important;flex-direction:column!important;gap:2px!important;width:100%!important;overflow:hidden!important}
+.cal-label{display:block!important;max-width:100%!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;border-radius:4px!important;padding:2px 4px!important;font-size:11px!important;line-height:1.25!important;font-weight:700!important}
+.cal-label.short{background:#eef2ff!important}
+.cal-label.long{background:#f3f4f6!important}
+.cal-label.weekly{background:#f5f5f5!important}
+.cal-label.countdown{background:#e8f5ee!important}
 </style>

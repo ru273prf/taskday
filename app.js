@@ -60,7 +60,7 @@ state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
 function section(title,id,list,weekly){return '<div class="section"><div class="section-head"><button class="section-title link" id="'+id+'">'+title+'</button>'+(weekly?'<span class="small">毎週月曜に復活</span>':"")+'</div>'+(list.length?list.map(taskCard).join(""):'<div class="card empty">'+title+' をタップして追加</div>')+'</div>'}
 function bind(){document.querySelectorAll("[data-complete]").forEach(b=>b.onclick=()=>complete(b.dataset.complete));document.querySelectorAll("[data-edit]").forEach(b=>longPress(b,()=>taskActions(b.dataset.edit)));document.querySelectorAll("[data-count]").forEach(b=>longPress(b,()=>countActions(b.dataset.count)))}
 function longPress(el,fn){let timer;el.addEventListener("pointerdown",()=>timer=setTimeout(fn,600));["pointerup","pointercancel","pointerleave"].forEach(x=>el.addEventListener(x,()=>clearTimeout(timer)))}
-function openTask(type,date,id){const old=id&&state.tasks.find(x=>x.id===id),t=old?.type||type,d=date||old?.date||key(new Date()),label=t==="weekly"?"毎週のタスク":t==="long"?"長期タスク":"短期タスク";$("#sheet").innerHTML='<h2>'+(old?"タスクを編集":label+"を追加")+'</h2><div class="field"><label>タスク名</label><input id="tt" placeholder="タスク名" value="'+esc(old?.title||"")+'"></div>'+(t==="weekly"?"":'<div class="field"><label>締め切り日</label><input id="td" type="date" value="'+d+'"></div>')+'<div class="actions"><button class="secondary" id="cancel">キャンセル</button><button class="primary" id="ok">保存</button></div>';showModal();$("#cancel").onclick=closeModal;$("#ok").onclick=()=>{const title=$("#tt").value.trim();if(!title)return;const dateVal=t==="weekly"?null:$("#td").value;if(old){old.title=title;old.type=t;old.date=dateVal}else state.tasks.push({id:crypto.randomUUID(),title,type:t,date:dateVal,done:false,reset:t==="weekly"?mondayKey(new Date()):""});save();closeModal();render()}}
+function openTask(type,date,id){const old=id&&state.tasks.find(x=>x.id===id),t=old?.type||type,d=old?.date||"",label=t==="weekly"?"毎週のタスク":t==="long"?"長期タスク":"短期タスク";$("#sheet").innerHTML='<h2>'+(old?"タスクを編集":label+"を追加")+'</h2><div class="field"><label>タスク名</label><input id="tt" placeholder="タスク名" value="'+esc(old?.title||"")+'"></div>'+(t==="weekly"?"":'<div class="field"><label>締め切り日</label><input id="td" type="date" value="'+esc(d)+'"></div>')+'<div class="actions"><button class="secondary" id="cancel">キャンセル</button><button class="primary" id="ok">保存</button></div>';showModal();$("#cancel").onclick=closeModal;$("#ok").onclick=()=>{const title=$("#tt").value.trim();if(!title)return;const dateVal=t==="weekly"?null:($("#td").value||null);if(old){old.title=title;old.type=t;old.date=dateVal}else state.tasks.push({id:crypto.randomUUID(),title,type:t,date:dateVal,done:false,reset:t==="weekly"?mondayKey(new Date()):""});save();closeModal();render()}}
 function taskActions(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;$("#sheet").innerHTML='<h2>'+esc(t.title)+'</h2><div class="actions"><button class="secondary" id="edit">編集</button><button class="primary" id="delete">削除</button></div>';showModal();$("#edit").onclick=()=>{closeModal();openTask(t.type,t.date,t.id)};$("#delete").onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==id);save();closeModal();render()}}
 function openCountdown(date,id){const old=id&&state.countdowns.find(x=>x.id===id),d=old?.date||date||key(new Date());$("#sheet").innerHTML='<h2>'+(old?"あと何日を編集":"あと何日を追加")+'</h2><div class="field"><label>名前</label><input id="ct" value="'+esc(old?.title||"")+'"></div><div class="field"><label>目標日</label><input id="cd" type="date" value="'+d+'"></div><div class="actions"><button class="secondary" id="cancel">キャンセル</button><button class="primary" id="ok">保存</button></div>';showModal();$("#cancel").onclick=closeModal;$("#ok").onclick=()=>{const title=$("#ct").value.trim();if(!title)return;if(old){old.title=title;old.date=$("#cd").value}else state.countdowns.push({id:crypto.randomUUID(),title,date:$("#cd").value});save();closeModal();render()}}
 function countActions(id){const c=state.countdowns.find(x=>x.id===id);if(!c)return;$("#sheet").innerHTML='<h2>'+esc(c.title)+'</h2><div class="actions"><button class="secondary" id="edit">編集</button><button class="primary" id="delete">削除</button></div>';showModal();$("#edit").onclick=()=>{closeModal();openCountdown(null,c.id)};$("#delete").onclick=()=>{state.countdowns=state.countdowns.filter(x=>x.id!==id);save();closeModal();render()}}
@@ -79,8 +79,13 @@ function renderCalendar(){
  let cells="";
  for(let i=0;i<42;i++){
    const d=new Date(start);d.setDate(start.getDate()+i);
-   const k=key(d),sel=k===key(selectedDate),has=state.tasks.some(t=>t.date===k)||state.countdowns.some(c=>c.date===k);
-   cells+='<button class="day '+(d.getMonth()!==m?"other ":"")+(sel?"sel ":"")+'" data-day="'+k+'">'+d.getDate()+(has?'<span class="dot"></span>':"")+'</button>';
+   const k=key(d),sel=k===key(selectedDate);
+   const labels=[
+     ...state.tasks.filter(t=>t.date===k).map(t=>({text:t.title,type:t.type})),
+     ...state.countdowns.filter(c=>c.date===k).map(c=>({text:c.title,type:"countdown"}))
+   ];
+   const labelHtml=labels.slice(0,4).map(x=>'<span class="cal-label '+x.type+'">'+esc(x.text)+'</span>').join("");
+   cells+='<button class="day '+(d.getMonth()!==m?"other ":"")+(sel?"sel ":"")+'" data-day="'+k+'"><span class="day-number">'+d.getDate()+'</span><span class="cal-labels">'+labelHtml+'</span></button>';
  }
  const k=key(selectedDate);
  const short=state.tasks.filter(t=>t.type==="short"&&t.date===k);
@@ -112,9 +117,9 @@ function renderCalendar(){
  document.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{
    selectedDate=fromKey(b.dataset.day);
    calDate=new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1);
-   renderCalendar();
+   openTask("short");
  });
- $("#addST").onclick=()=>openTask("short",k);
+ $("#addST").onclick=()=>openTask("short");
  $("#addLT").onclick=()=>openTask("long",k);
  $("#addCD").onclick=()=>openCountdown(k);
  bind();
