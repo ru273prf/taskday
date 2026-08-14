@@ -226,11 +226,11 @@ function renderCalendar(){
    <div class="grid">${cells}</div>
  </div>
  <div class="section">
-   <div class="section-head"><b class="section-title">${fmt(selectedDate)}のタスク</b><button class="link" id="addST">＋ 短期タスク</button></div>
+   <div class="section-head"><b class="section-title">${fmt(selectedDate)}のタスク</b></div>
    ${short.map(taskCard).join("")||'<div class="card empty">この日の短期タスクはありません</div>'}
  </div>
  <div class="section">
-   <div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addCD">追加</button></div>
+   <div class="section-head"><b class="section-title">あと何日</b></div>
    ${counts.map(countdownCard).join("")||'<div class="card empty">この日が目標日のものはありません</div>'}
  </div>
  <div class="section">
@@ -260,9 +260,9 @@ function renderCalendar(){
      dateAddChoice(selectedDate);
    });
  });
- $("#addST").onclick=()=>openTask("short");
+
  $("#addLT").onclick=()=>openTask("long",k);
- $("#addCD").onclick=()=>openCountdown(k);
+
  document.querySelectorAll("[data-label-id]").forEach(b=>longPress(b,()=>{
    const kind=b.dataset.labelKind,id=b.dataset.labelId;
    const fn=kind==="task"?taskActions:kind==="event"?eventActions:countActions;
