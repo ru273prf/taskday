@@ -27,7 +27,6 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);bord
 <nav>
 <button id="homeTab" class="active">ホーム</button>
 <button id="calTab">カレンダー</button>
-<button id="allTab">タスク一覧</button>
 </nav>
 <div id="modal" class="modal"><div class="sheet" id="sheet"></div></div>
 
@@ -47,7 +46,7 @@ const fmt=d=>fromKey(typeof d==="string"?d:key(d)).toLocaleDateString("ja-JP",{y
 const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 const rem=d=>{let n=daysLeft(d);return n>0?"あと"+n+"日":n===0?"今日":Math.abs(n)+"日経過"};
 function refresh(){let wk=mondayKey(new Date());state.tasks.forEach(t=>{if(t.type==="weekly"&&t.reset!==wk){t.done=false;t.reset=wk}});save()}
-function complete(id){let t=state.tasks.find(x=>x.id===id);if(!t)return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completed.unshift({...t,done:true,completedAt:new Date().toISOString()});state.completed=state.completed.slice(0,10);save();render()}
+function complete(id){let t=state.tasks.find(x=>x.id===id);if(!t)return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completed.unshift({...t,done:true,completedAt:new Date().toISOString()});state.completed=state.completed.slice(0,5);save();render()}
 function taskCard(t){
  const meta=t.date?`<div class="meta">${t.type==="short"?"短期":"長期"} ・ ${fmt(t.date)}</div>`:"";
  const days=t.date?`<div class="days ${daysLeft(t.date)<0?"danger":daysLeft(t.date)===0?"today":""}">${rem(t.date)}</div>`:"";
@@ -62,50 +61,25 @@ function bind(){
 }
 function renderHome(){
  refresh();
- let weekly=state.tasks.filter(t=>t.type==="weekly"),short=state.tasks.filter(t=>t.type==="short");
+ let weekly=state.tasks.filter(t=>t.type==="weekly"),
+     short=state.tasks.filter(t=>t.type==="short"),
+     long=state.tasks.filter(t=>t.type==="long"),
+     completed=state.completed;
  $("#app").innerHTML=`<header><div><h1>TaskDay</h1><div class="date">${new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})}</div></div><button class="add" id="plus">＋</button></header>
  <div class="section"><div class="section-head"><div class="section-title">あと何日</div><button class="link" id="addC">追加</button></div>${state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addW">毎週のタスク</button><span class="small">毎週月曜に復活</span></div>${weekly.length?weekly.map(taskCard).join(""):'<div class="card empty">「毎週のタスク」をタップして追加</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addS">短期タスク</button></div>${short.length?short.map(taskCard).join(""):'<div class="card empty">「短期タスク」をタップして追加</div>'}</div>
- <div class="section"><div class="section-head"><div class="section-title">完了済みタスク</div><span class="small">最新10件</span></div>${state.completed.length?state.completed.map(t=>`<div class="card"><div class="row"><div class="check done">✓</div><div style="flex:1"><div class="title doneText">${esc(t.title)}</div><div class="meta">${t.type==="weekly"?"毎週":"短期"} ・ 完了済み</div></div><button class="link" data-restore="${t.id}">復活</button></div></div>`).join(""):'<div class="card empty">完了したタスクはここに保存されます</div>'}</div>`;
- $("#plus").onclick=()=>openTask("short");$("#addC").onclick=openCountdown;$("#addW").onclick=()=>openTask("weekly");$("#addS").onclick=()=>openTask("short");
- document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>{let t=state.completed.find(x=>x.id===b.dataset.restore);if(t){state.completed=state.completed.filter(x=>x.id!==t.id);t.done=false;delete t.completedAt;state.tasks.push(t);save();render()}});
+ <div class="section"><div class="section-head"><button class="section-title link" id="addW">＋ 毎週のタスク</button><span class="small">毎週月曜に復活</span></div>${weekly.length?weekly.map(taskCard).join(""):'<div class="card empty">「＋ 毎週のタスク」をタップして追加</div>'}</div>
+ <div class="section"><div class="section-head"><button class="section-title link" id="addS">＋ 短期タスク</button></div>${short.length?short.map(taskCard).join(""):'<div class="card empty">「＋ 短期タスク」をタップして追加</div>'}</div>
+ <div class="section"><div class="section-head"><button class="section-title link" id="addL">＋ 長期タスク</button></div>${long.length?long.map(taskCard).join(""):'<div class="card empty">「＋ 長期タスク」をタップして追加</div>'}</div>
+ <div class="section"><div class="section-head"><div class="section-title">完了済みタスク</div><span class="small">最新5件</span></div>${completed.length?completed.map(t=>`<div class="card"><div class="row"><div class="check done">✓</div><div style="flex:1"><div class="title doneText">${esc(t.title)}</div><div class="meta">${t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期"} ・ 完了済み</div></div><button class="link" data-restore="${t.id}">復活</button></div></div>`).join(""):'<div class="card empty">完了したタスクはここに保存されます</div>'}</div>`;
+ $("#plus").onclick=()=>openTask("short");
+ $("#addC").onclick=openCountdown;
+ $("#addW").onclick=()=>openTask("weekly");
+ $("#addS").onclick=()=>openTask("short");
+ $("#addL").onclick=()=>openTask("long");
+ document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>{
+   let t=state.completed.find(x=>x.id===b.dataset.restore);
+   if(t){state.completed=state.completed.filter(x=>x.id!==t.id);t.done=false;delete t.completedAt;state.tasks.push(t);save();render()}
+ });
  bind();
 }
-function openTask(type="short",date=null,id=null){
- let old=id&&state.tasks.find(x=>x.id===id), initial=date||old?.date||key(new Date());
- $("#sheet").innerHTML=`<h2>${old?"タスクを編集":"タスクを追加"}</h2><div class="field"><label>タスク名</label><input id="tt" value="${esc(old?.title||"")}" placeholder="例：レポート"></div><div class="field"><label>種類</label><select id="ty"><option value="short">短期タスク</option><option value="weekly">毎週のタスク</option><option value="long">長期タスク</option></select></div><div class="field" id="df"><label id="dl">締切日</label><input id="td" type="date" value="${initial}"></div><div class="actions"><button class="secondary" id="cx">キャンセル</button><button class="primary" id="ok">保存</button></div>`;
- $("#modal").classList.add("show");$("#ty").value=old?.type||type;
- const update=()=>{$("#df").classList.toggle("hidden",$("#ty").value==="weekly");$("#dl").textContent=$("#ty").value==="long"?"目標日":"締切日"};$("#ty").onchange=update;update();$("#cx").onclick=closeModal;
- $("#ok").onclick=()=>{let title=$("#tt").value.trim(),typ=$("#ty").value;if(!title)return;let d=typ==="weekly"?null:$("#td").value;if(old){old.title=title;old.type=typ;old.date=d;old.reset=typ==="weekly"?mondayKey(new Date()):""}else state.tasks.push({id:crypto.randomUUID(),title,type:typ,date:d,done:false,reset:typ==="weekly"?mondayKey(new Date()):""});save();closeModal();render()};
-}
-function taskActions(id){let t=state.tasks.find(x=>x.id===id);if(!t)return;$("#sheet").innerHTML=`<h2>${esc(t.title)}</h2><div class="actions"><button class="secondary" id="ed">編集</button><button class="primary" id="rm">削除</button></div>`;$("#modal").classList.add("show");$("#ed").onclick=()=>{closeModal();openTask(t.type,t.date,t.id)};$("#rm").onclick=()=>{complete(t.id);closeModal()}}
-function openCountdown(date=null,id=null){
- let old=id&&state.countdowns.find(x=>x.id===id);
- $("#sheet").innerHTML=`<h2>${old?"あと何日を編集":"あと何日を追加"}</h2><div class="field"><label>名前</label><input id="ct" value="${esc(old?.title||"")}" placeholder="例：TOEFL"></div><div class="field"><label>目標日</label><input id="cd" type="date" value="${old?.date||date||key(new Date())}"></div><div class="actions"><button class="secondary" id="cx">キャンセル</button><button class="primary" id="ok">保存</button></div>`;
- $("#modal").classList.add("show");$("#cx").onclick=closeModal;$("#ok").onclick=()=>{let title=$("#ct").value.trim();if(!title)return;if(old){old.title=title;old.date=$("#cd").value}else state.countdowns.push({id:crypto.randomUUID(),title,date:$("#cd").value});save();closeModal();render()};
-}
-function countActions(id){let c=state.countdowns.find(x=>x.id===id);if(!c)return;$("#sheet").innerHTML=`<h2>${esc(c.title)}</h2><div class="actions"><button class="secondary" id="ed">編集</button><button class="primary" id="rm">削除</button></div>`;$("#modal").classList.add("show");$("#ed").onclick=()=>openCountdown(null,c.id);$("#rm").onclick=()=>{state.countdowns=state.countdowns.filter(x=>x.id!==id);save();closeModal();render()}}
-function renderCalendar(){
- let y=calDate.getFullYear(),m=calDate.getMonth(),first=new Date(y,m,1),start=new Date(first);start.setDate(1-first.getDay());let cells="";
- for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let k=key(d),sel=k===key(selectedDate),has=state.tasks.some(t=>t.date===k)||state.countdowns.some(c=>c.date===k);cells+=`<button type="button" class="day ${d.getMonth()!==m?"other":""} ${sel?"sel":""} ${has?"has":""}" data-day="${k}"><span>${d.getDate()}</span>${has?'<span class="dot"></span>':""}</button>`}
- let k=key(selectedDate), tasks=state.tasks.filter(t=>t.date===k), counts=state.countdowns.filter(c=>c.date===k), longs=tasks.filter(t=>t.type==="long");
- $("#app").innerHTML=`<header><div><h1>カレンダー</h1><div class="date">日付を選んで確認・追加</div></div></header><div class="card calendar"><div class="cal-head"><button id="prev">‹</button><div class="cal-title">${y}年 ${m+1}月</div><button id="next">›</button></div><div class="week">${["日","月","火","水","木","金","土"].map(x=>`<div>${x}</div>`).join("")}</div><div class="daysgrid">${cells}</div></div>
- <div class="detail"><div class="toolbar"><strong>${fmt(selectedDate)}</strong><button class="link" id="addST">短期タスクを追加</button></div>${tasks.filter(t=>t.type!=="long").map(taskCard).join("")||'<div class="card empty">この日のタスクはありません</div>'}
- <div class="section"><div class="section-head"><div class="section-title">あと何日の内容</div><button class="link" id="addCD">追加</button></div>${counts.map(countdownCard).join("")||'<div class="card empty">この日が目標日のものはありません</div>'}</div>
- <div class="section"><div class="section-head"><button class="section-title link" id="addLT">長期タスク</button></div>${longs.map(taskCard).join("")||'<div class="card empty">この日の長期タスクはありません</div>'}</div></div>`;
- $("#prev").onclick=()=>{calDate=new Date(y,m-1,1);renderCalendar()};$("#next").onclick=()=>{calDate=new Date(y,m+1,1);renderCalendar()};
- document.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{selectedDate=fromKey(b.dataset.day);renderCalendar()});
- $("#addST").onclick=()=>openTask("short",k);$("#addLT").onclick=()=>openTask("long",k);$("#addCD").onclick=()=>openCountdown(k);
- bind();
-}
-function closeModal(){$("#modal").classList.remove("show")}
-function render(){if(view==="home")renderHome();else renderCalendar();homeTab.classList.toggle("active",view==="home");calTab.classList.toggle("active",view==="cal")}
-document.addEventListener("click",e=>{if(e.target.id==="homeTab"){view="home";render()}if(e.target.id==="calTab"){view="cal";render()}});
-const homeTab=document.getElementById("homeTab"),calTab=document.getElementById("calTab");
-$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
-refresh();save();render();
-</script>
-
-<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script></body>
-</html>
+>
