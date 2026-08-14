@@ -110,7 +110,7 @@ function renderCalendar(){
  $("#addCD").onclick=()=>openCountdown(k);
  bind();
 }
-function render(){if(view==="home")renderHome();else renderCalendar();$("#homeTab").classList.toggle("active",view==="home");$("#calTab").classList.toggle("active",view==="cal")}
+function render(){if(view==="home")renderHome();else renderCalendar()}
 if($("#modal"))$("#modal").addEventListener("click",function(e){if(e.target.id==="modal")closeModal()});
 refresh();
 render();
