@@ -5,7 +5,18 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
-const dateOf=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
+const dateOf=k=>{
+ if(k instanceof Date)return new Date(k.getFullYear(),k.getMonth(),k.getDate());
+ if(typeof k==="number"){const d=new Date(k);return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+ if(k&&typeof k==="object"){
+  if(typeof k.study_date==="string")return dateOf(k.study_date);
+  if(typeof k.start_date==="string")return dateOf(k.start_date);
+  if(typeof k.end_date==="string")return dateOf(k.end_date);
+ }
+ const s=String(k??"").slice(0,10);
+ const [y,m,d]=s.split("-").map(Number);
+ return new Date(y,m-1,d);
+};
 const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
 const diffDays=(a,b)=>Math.round((dateOf(b)-dateOf(a))/86400000);
 const fmt=k=>{const d=dateOf(k);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
@@ -87,7 +98,7 @@ function chart(pr,moneyMode){
  const viewStart=addDays(startDate,-1),viewEnd=endDate;
  const totalDays=Math.max(1,diffDays(key(viewStart),key(viewEnd)));
  const projectDays=Math.max(1,diffDays(pr.start_date,pr.end_date));
- const actuals=logsFor(pr).filter(x=>x.study_date>=pr.start_date&&x.study_date<=pr.end_date).sort((a,b)=>a.study_date.localeCompare(b.study_date));
+ const actuals=logsFor(pr).filter(x=>String(x.study_date)>=String(pr.start_date)&&String(x.study_date)<=String(pr.end_date)).sort((a,b)=>String(a.study_date).localeCompare(String(b.study_date)));
  const x=d=>L+Math.max(0,Math.min(totalDays,(d-viewStart)/DAY))/totalDays*(W-L-R);
  const toValue=v=>moneyMode?v/60*1250:v/60;
  const actualValueAt=d=>toValue(actualTotalAt(pr,key(d)));
