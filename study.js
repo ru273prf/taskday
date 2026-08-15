@@ -97,7 +97,7 @@ function chart(pr,moneyMode){
  const targetValue=toValue(pr.goal_minutes);
  const slopePerDay=targetValue/projectDays;
  const goalAt=d=>slopePerDay*Math.max(0,(d-viewStart)/DAY);
- const actualVals=actuals.map(l=>actualValueAt(dateOf(l)));
+ const actualVals=actuals.map(l=>actualValueAt(dateOf(l.study_date)));
  const goalEndValue=goalAt(viewEnd);
  const maxVal=Math.max(1,goalEndValue,...actualVals,0);
  const y=v=>H-B-(Math.max(0,v)/maxVal)*(H-T-B);
