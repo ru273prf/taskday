@@ -233,7 +233,7 @@ function calendar(pr){
  const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),startGrid=new Date(y,m,1-first.getDay()),endGrid=new Date(y,m+1,0+6-last.getDay());
  let cells="";
  for(let d=new Date(startGrid);d<=endGrid;d=addDays(d,1)){
-  const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date,holiday=holidaySet(d.getFullYear()).has(k),dow=d.getDay();
+  const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date,todayKey=key(new Date()),recordable=inRange&&k<=todayKey,holiday=holidaySet(d.getFullYear()).has(k),dow=d.getDay();
   const colorClass=holiday||dow===0?"sunday":dow===6?"saturday":"";
   cells+=`<button class="day ${colorClass} ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${recordable?"recordable ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" ${recordable?`onclick="selectDay('${k}')"`:""}>${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
  }
@@ -244,7 +244,9 @@ window.selectDay=k=>{
  const pr=p();
  selectedDate=k;
  render();
- if(k>=pr.start_date&&k<=pr.end_date)logDay(k);
+ const todayKey=key(new Date());
+ if(k>=pr.start_date&&k<=pr.end_date&&k<=todayKey)logDay(k);
+ else if(k>todayKey) alert("未来の日付には勉強時間を登録できません。");
  else alert("この日はプロジェクト期間外です。");
 }
 window.projects=function projects(){
