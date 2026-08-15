@@ -98,6 +98,13 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 </style>
 
 
+<style id="study-metrics-v11">
+.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
+.summary>div{text-align:center;min-width:0}
+.summary b{display:block;font-size:clamp(20px,2.5vw,30px);font-weight:800}
+.summary span{display:block;margin-top:5px;color:#777;font-size:14px}
+@media(max-width:800px){.summary{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
 <body>
 <div id="app" class="app"></div>
@@ -108,6 +115,6 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 </nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./study.js?v=9_2"></script>
+<script src="./study.js?v=11"></script>
 </body>
 </html>

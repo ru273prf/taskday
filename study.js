@@ -58,17 +58,62 @@ function p(){return state.projects.find(x=>x.id===currentId)||state.projects[0]}
 function logsFor(pr){return state.logs.filter(x=>x.project_id===pr.id)}
 function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
+
+function durationDays(start,end){
+ const a=dateOf(start),b=dateOf(end);
+ return Math.max(1,Math.round((b-a)/DAY));
+}
+function hmFromMinutes(mins){
+ mins=Math.max(0,Math.round(Number(mins)||0));
+ return `${Math.floor(mins/60)}時間${mins%60}分`;
+}
+function metricMoneyFromMinutes(mins){
+ const yen=(Number(mins)||0)/60*1250;
+ if(yen>=100000000){
+  const n=yen/100000000; return `${Number.isInteger(n)?n:n.toFixed(1)}億`;
+ }
+ if(yen>=10000){
+  const n=yen/10000; return `${Number.isInteger(n)?n:n.toFixed(1)}万`;
+ }
+ return `${Math.round(yen)}円`;
+}
+function currentMetrics(pr){
+ const target=Number(pr.goal_minutes)||0;
+ const days=durationDays(pr.start_date,pr.end_date);
+ const targetAvg=target/days;
+
+ const today=new Date();
+ today.setHours(0,0,0,0);
+ const yesterday=new Date(today);
+ yesterday.setDate(yesterday.getDate()-1);
+
+ const start=dateOf(pr.start_date);
+ const end=dateOf(pr.end_date);
+ const through=yesterday<end?yesterday:end;
+ const elapsed=Math.max(0,Math.min(days,Math.floor((through-start)/DAY)));
+ const actual=cumulativeAt(key(through));
+ const actualAvg=elapsed>0?actual/elapsed:0;
+ const progress=target>0?(actual/target)*100:0;
+ return {targetAvg,actualAvg,progressDiff:progress-100};
+}
+
 function render(){
  try{
  const pr=p();
  if(!pr){$("#app").innerHTML=`<div class="card empty">プロジェクトがありません。<button class="primary" onclick="projects()">＋ プロジェクトを作成</button></div>`;return}
- const t=total(pr),isMoney=mode==="money";
+ const t=total(pr),isMoney=mode==="money",metrics=currentMetrics(pr);
  const targetValue=isMoney?money(pr.goal_minutes)+"円":minutesText(pr.goal_minutes);
  const totalValue=isMoney?money(t)+"円":minutesText(t);
  $("#app").innerHTML=`<header><button class="project-btn" onclick="projects()">${esc(pr.name)} ▾</button><button class="settings" onclick="settings()">⚙ 設定</button></header>
  <div class="card">
   <div class="meta">${fmt(pr.start_date)} ～ ${fmt(pr.end_date)}</div>
-  <div class="summary"><div><b>${targetValue}</b><span>目標${isMoney?"金額":"時間"}</span></div><div><b>${totalValue}</b><span>これまでの合計${isMoney?"金額":"時間"}</span></div></div>
+  <div class="summary">
+   <div><b>${targetValue}</b><span>目標${isMoney?"金額":"時間"}</span></div>
+   <div><b>${totalValue}</b><span>これまでの合計${isMoney?"金額":"時間"}</span></div>
+   <div><b>${isMoney?metricMoneyFromMinutes(metrics.targetAvg):hmFromMinutes(metrics.targetAvg*60)}</b><span>目標平均</span></div>
+   <div><b>${isMoney?metricMoneyFromMinutes(metrics.actualAvg):hmFromMinutes(metrics.actualAvg*60)}</b><span>実績平均</span></div>
+   <div><b>${metrics.progressDiff>=0?"+":""}${metrics.progressDiff.toFixed(1)}%</b><span>進度差</span></div>
+  </div>
   <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
   ${chart(pr,isMoney)}
   <div class="legend"><span><i></i>目標</span><span><i class="actual"></i>実績</span></div>
