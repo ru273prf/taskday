@@ -82,19 +82,22 @@ function currentMetrics(pr){
  const start=dateOf(pr.start_date);
  const end=dateOf(pr.end_date);
 
- // Project days are inclusive: 8/15 through 8/19 = 5 days.
+ // The goal average uses the number of calendar days from start through end.
+ // Example: 8/15-8/19 = 5 days.
  const days=Math.max(1,diffDays(pr.start_date,pr.end_date)+1);
  const targetAvg=target/days;
 
- // Progress/actual average are evaluated through the day before the
- // date the user is currently viewing.
+ // Evaluate progress at the day before the date currently being viewed.
  const viewed=dateOf(selectedDate);
  const previous=addDays(viewed,-1);
  const through=previous<start?addDays(start,-1):(previous>end?end:previous);
  const elapsed=through<start?0:Math.min(days,diffDays(pr.start_date,key(through))+1);
  const actual=through<start?0:actualTotalAt(pr,key(through));
+
+ // Target cumulative amount at the same point in time.
+ const targetThrough=targetAvg*elapsed;
  const actualAvg=elapsed>0?actual/elapsed:0;
- const progress=target>0?(actual/target)*100:0;
+ const progress=targetThrough>0?(actual/targetThrough)*100:0;
  return {targetAvg,actualAvg,progressDiff:progress-100};
 }
 
@@ -232,7 +235,7 @@ function calendar(pr){
  for(let d=new Date(startGrid);d<=endGrid;d=addDays(d,1)){
   const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date,holiday=holidaySet(d.getFullYear()).has(k),dow=d.getDay();
   const colorClass=holiday||dow===0?"sunday":dow===6?"saturday":"";
-  cells+=`<button class="day ${colorClass} ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" onclick="selectDay('${k}')">${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
+  cells+=`<button class="day ${colorClass} ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${recordable?"recordable ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" ${recordable?`onclick="selectDay('${k}')"`:""}>${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
  }
  return `<div class="calhead"><button onclick="changeMonth(-1)">‹</button><div class="month-title">${y}年${m+1}月</div><button onclick="changeMonth(1)">›</button></div><div class="week">${["日","月","火","水","木","金","土"].map(x=>`<div>${x}</div>`).join("")}</div><div class="grid">${cells}</div>`;
 }
