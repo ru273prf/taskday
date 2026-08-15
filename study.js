@@ -9,7 +9,7 @@ const dateOf=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)
 const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
 const diffDays=(a,b)=>Math.round((dateOf(b)-dateOf(a))/86400000);
 const fmt=k=>{const d=dateOf(k);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
-const minutesText=m=>`${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
+const minutesText=m=>`${Math.floor(m/60)}時間${String(m%60)}分`;
 const money=m=>Math.round(m/60*1250).toLocaleString("ja-JP");
 const DAY=86400000, MONTH_DAYS=30;
 let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date()),calendarMonth=new Date();
@@ -49,7 +49,7 @@ function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
 function isLong(pr){return diffDays(pr.start_date,pr.end_date)>MONTH_DAYS}
 function latestActualDate(pr){const ls=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));return ls.length?ls[ls.length-1].study_date:null}
-function fullRange(){
+window.fullRange=function fullRange(){
  viewMode="full";
  const pr=p();
  if(pr){
@@ -81,7 +81,7 @@ function render(){
 }
 let scaleMode="auto";
 function viewMode(pr){return isLong(pr)?scaleMode:"full"}
-function toggleScale(){scaleMode=scaleMode==="full"?"auto":"full";render()}
+window.toggleScale=function toggleScale(){scaleMode=scaleMode==="full"?"auto":"full";render()}
 function chart(pr,moneyMode){
  const W=700,H=310,L=60,R=18,T=18,B=48;
  let viewStart=dateOf(pr.start_date),viewEnd=dateOf(pr.end_date);
@@ -124,12 +124,27 @@ function chart(pr,moneyMode){
  if(isLong(pr)&&scaleMode!=="full")s+=`<div class="chart-note">直近1か月を表示中（全期間を見るには「全期間」を押してください）</div>`;
  return s;
 }
+
+function holidaySet(year){
+ const s=new Set();
+ const add=(m,d)=>s.add(`${year}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);
+ add(1,1);add(2,11);add(2,23);add(4,29);add(5,3);add(5,4);add(5,5);add(8,11);add(11,3);add(11,23);
+ const nthMon=(month,n)=>{let d=new Date(year,month-1,1);let shift=(1-d.getDay()+7)%7;d.setDate(1+shift+(n-1)*7);return d.getDate()};
+ add(1,nthMon(1,2)); add(7,nthMon(7,3)); add(9,nthMon(9,3)); add(10,nthMon(10,2));
+ // Approximate equinoxes for common calendar use.
+ const vernal=Math.floor(20.8431+0.242194*(year-1980)-Math.floor((year-1980)/4));
+ const autumn=Math.floor(23.2488+0.242194*(year-1980)-Math.floor((year-1980)/4));
+ add(3,vernal);add(9,autumn);
+ return s;
+}
+
 function calendar(pr){
  const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),startGrid=new Date(y,m,1-first.getDay()),endGrid=new Date(y,m+1,0+6-last.getDay());
  let cells="";
  for(let d=new Date(startGrid);d<=endGrid;d=addDays(d,1)){
-  const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date;
-  cells+=`<button class="day ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" onclick="selectDay('${k}')">${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
+  const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date,holiday=holidaySet(d.getFullYear()).has(k),dow=d.getDay();
+  const colorClass=holiday||dow===0?"sunday":dow===6?"saturday":"";
+  cells+=`<button class="day ${colorClass} ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" onclick="selectDay('${k}')">${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
  }
  return `<div class="calhead"><button onclick="changeMonth(-1)">‹</button><div class="month-title">${y}年${m+1}月</div><button onclick="changeMonth(1)">›</button></div><div class="week">${["日","月","火","水","木","金","土"].map(x=>`<div>${x}</div>`).join("")}</div><div class="grid">${cells}</div>`;
 }
@@ -217,7 +232,6 @@ window.saveGoal=async()=>{
  if(r.error){alert(r.error.message);return}
  close();render();
 }
-window.logDay=
 function bindWheels(){
  document.querySelectorAll(".wheel-list").forEach(el=>{
   if(el.dataset.bound==="1") return;
@@ -259,28 +273,58 @@ function bindWheels(){
  });
 }
 
+window.logDay=
+function bindWheels(){
+ document.querySelectorAll(".wheel-list").forEach(el=>{
+  if(el.dataset.bound==="1") return;
+  el.dataset.bound="1";
+  const vals=JSON.parse(el.dataset.values||"[]");
+  let index=Math.max(0,vals.indexOf(Number(el.dataset.selected)));
+  let startY=0,lastY=0,drag=false,acc=0;
+  const apply=i=>{
+   index=Math.max(0,Math.min(vals.length-1,i));
+   el.dataset.selected=String(vals[index]);
+   el.style.transform=`translateY(${65-index*40}px)`;
+   [...el.children].forEach((x,j)=>x.classList.toggle("selected",j===index));
+  };
+  const move=dy=>{
+   acc+=dy;
+   while(Math.abs(acc)>=20){
+    apply(index+(acc<0?1:-1));
+    acc+=acc<0?20:-20;
+   }
+  };
+  el.addEventListener("pointerdown",e=>{
+   drag=true;startY=lastY=e.clientY;acc=0;
+   el.setPointerCapture?.(e.pointerId);
+  });
+  el.addEventListener("pointermove",e=>{
+   if(!drag)return;
+   const dy=e.clientY-lastY;lastY=e.clientY;move(dy);
+  });
+  el.addEventListener("pointerup",e=>{
+   drag=false;el.releasePointerCapture?.(e.pointerId);
+  });
+  el.addEventListener("pointercancel",()=>drag=false);
+  el.addEventListener("wheel",e=>{
+   e.preventDefault();
+   apply(index+(e.deltaY>0?1:-1));
+  },{passive:false});
+  apply(index);
+ });
+}
+
 function logDay(date){
  const pr=p(),old=logAt(pr,date);
  if(date<pr.start_date||date>pr.end_date){alert("この日はプロジェクト期間外です。");return}
  const hm=old?.minutes||0,h=Math.floor(hm/60),m=hm%60;
  const hours=Array.from({length:16},(_,i)=>i),mins=Array.from({length:12},(_,i)=>i*5);
  open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",hours,h)}${wheel("mins",mins,m)}</div><div class="note">上下にスワイプして時間・分を選択<br>時間：0～15時間　分：0～55分（5分刻み）</div>
- <button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="close()">戻る</button>`);
+ <button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 function wheel(name,vals,sel){
  const idx=Math.max(0,vals.indexOf(sel));
- return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-index="${idx}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${String(v).padStart(2,"0")}</div>`).join("")}</div></div>`;
-}
-function wheelBind(el){
- let y=0,drag=false;
- const move=clientY=>{const dy=clientY-y;if(Math.abs(dy)<18)return;const vals=JSON.parse(el.dataset.values);let i=Number(el.dataset.index)+(dy<0?1:-1);i=Math.max(0,Math.min(vals.length-1,i));el.dataset.index=i;el.style.transform=`translateY(${65-i*40}px)`;[...el.children].forEach((x,j)=>x.classList.toggle("selected",j===i));y=clientY};
- el.ontouchstart=e=>{y=e.touches[0].clientY};
- el.ontouchmove=e=>{e.preventDefault();move(e.touches[0].clientY)};
- el.ontouchend=()=>{};
- el.onmousedown=e=>{drag=true;y=e.clientY};
- el.onmousemove=e=>{if(drag)move(e.clientY)};
- el.onmouseup=()=>{drag=false};
- el.onmouseleave=()=>{drag=false};
+ return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-selected="${vals[idx]}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${String(v)}</div>`).join("")}</div></div>`;
 }
 window.saveLog=async date=>{
  const a=$("#hoursWheel"),b=$("#minsWheel"),hv=JSON.parse(a.dataset.values)[Number(a.dataset.index)],mv=JSON.parse(b.dataset.values)[Number(b.dataset.index)],minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
@@ -289,19 +333,14 @@ window.saveLog=async date=>{
  await load();close();render();
 }
 window.toggleMode=function toggleMode(){mode=mode==="hours"?"money":"hours";render()}
-function open(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show");setTimeout(()=>document.querySelectorAll(".wheel-list").forEach(w=>{w.style.transform=`translateY(${65-Number(w.dataset.index)*40}px)`;wheelBind(w)}),0)}
-function close(){$("#modal").classList.remove("show")}
-$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")return});
+function open(html){
+ $("#sheet").innerHTML=html;
+ $("#modal").classList.add("show");
+ setTimeout(bindWheels,0);
+}
+function close(){ $("#modal").classList.remove("show"); }
+window.closeStudyModal=close;
+window.close=close;
+$("#modal").addEventListener("click",e=>{e.stopPropagation();});
 init();
 })();
-
-document.addEventListener("click",e=>{
- const b=e.target.closest("button");
- if(!b)return;
- const t=(b.textContent||"").trim();
- if(t==="戻る"||t==="閉じる"){
-  e.preventDefault();
-  e.stopPropagation();
-  close();
- }
-});
