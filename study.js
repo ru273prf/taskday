@@ -79,19 +79,20 @@ function metricMoneyFromMinutes(mins){
 }
 function currentMetrics(pr){
  const target=Number(pr.goal_minutes)||0;
- const days=durationDays(pr.start_date,pr.end_date);
- const targetAvg=target/days;
-
- const today=new Date();
- today.setHours(0,0,0,0);
- const yesterday=new Date(today);
- yesterday.setDate(yesterday.getDate()-1);
-
  const start=dateOf(pr.start_date);
  const end=dateOf(pr.end_date);
- const through=yesterday<end?yesterday:end;
- const elapsed=Math.max(0,Math.min(days,Math.floor((through-start)/DAY)));
- const actual=actualTotalAt(pr,key(through));
+
+ // Project days are inclusive: 8/15 through 8/19 = 5 days.
+ const days=Math.max(1,diffDays(pr.start_date,pr.end_date)+1);
+ const targetAvg=target/days;
+
+ // Progress/actual average are evaluated through the day before the
+ // date the user is currently viewing.
+ const viewed=dateOf(selectedDate);
+ const previous=addDays(viewed,-1);
+ const through=previous<start?addDays(start,-1):(previous>end?end:previous);
+ const elapsed=through<start?0:Math.min(days,diffDays(pr.start_date,key(through))+1);
+ const actual=through<start?0:actualTotalAt(pr,key(through));
  const actualAvg=elapsed>0?actual/elapsed:0;
  const progress=target>0?(actual/target)*100:0;
  return {targetAvg,actualAvg,progressDiff:progress-100};
@@ -142,7 +143,7 @@ function chart(pr,moneyMode){
  const startDate=dateOf(pr.start_date),endDate=dateOf(pr.end_date);
  const viewStart=addDays(startDate,-1),viewEnd=endDate;
  const totalDays=Math.max(1,diffDays(key(viewStart),key(viewEnd)));
- const projectDays=Math.max(1,diffDays(pr.start_date,pr.end_date));
+ const projectDays=Math.max(1,diffDays(pr.start_date,pr.end_date)+1);
  const actuals=logsFor(pr).filter(x=>String(x.study_date)>=String(pr.start_date)&&String(x.study_date)<=String(pr.end_date)).sort((a,b)=>String(a.study_date).localeCompare(String(b.study_date)));
  const x=d=>L+Math.max(0,Math.min(totalDays,(d-viewStart)/DAY))/totalDays*(W-L-R);
  const toValue=v=>moneyMode?v/60*1250:v/60;
