@@ -15,20 +15,26 @@ header{display:flex;justify-content:space-between;align-items:center;padding:4px
 .settings{border:1px solid #dfe4e0;background:#fff;border-radius:11px;padding:8px 11px}
 .card{background:#fff;border:1px solid #e1e5e2;border-radius:18px;margin-bottom:12px;padding:16px}
 .meta{text-align:center;color:#7b827d;font-size:12px}
-.goal{text-align:center;font-weight:800;margin-top:5px}
-.summary{display:flex;justify-content:center;gap:24px;margin:13px 0 3px;text-align:center}
+.summary{display:flex;justify-content:center;gap:34px;margin:12px 0 4px;text-align:center}
 .summary b{display:block;color:#2d9147;font-size:19px}
 .summary span{display:block;color:#7b827d;font-size:11px;margin-top:2px}
-.switch-row{display:flex;justify-content:flex-end;margin-bottom:3px}
+.switch-row{display:flex;justify-content:flex-end;gap:7px;margin-bottom:3px}
 .switch-row button{border:1px solid #ccd6ce;background:#fff;border-radius:9px;padding:5px 9px;font-size:12px}
 .legend{display:flex;justify-content:center;gap:18px;color:#7b827d;font-size:11px;margin-top:2px}
 .legend i{display:inline-block;width:27px;border-top:2px dashed #555;vertical-align:middle;margin-right:5px}
 .legend i.actual{border-top-style:solid;border-color:#42ad5b}
 .chart{width:100%;display:block}
+.chart-note{text-align:center;color:#7b827d;font-size:11px;margin-top:3px}
 .section-title{font-size:16px;font-weight:800;margin:0 0 10px}
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.week{text-align:center;color:#7b827d;font-size:11px;font-weight:700}
-.day{min-height:48px;border:1px solid #edf0ed;border-radius:10px;background:#fff;font-size:12px;padding:5px 2px}
+.calendar-card{padding:14px}
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calhead button{border:0;background:none;font-size:23px;padding:4px 10px}
+.month-title{font-weight:800;font-size:16px}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.week div{text-align:center;color:#777;font-size:11px;font-weight:700;padding:4px}
+.day{min-height:48px;border:1px solid transparent;border-radius:10px;background:#fff;font-size:12px;padding:4px 2px;position:relative}
+.day.other{color:#bbb}
+.day.in-range{border-color:#edf0ed}
 .day.has{border-color:#b9dfc1;color:#2d9147;font-weight:800}
 .day.selected{background:#42ad5b;color:#fff;border-color:#42ad5b}
 .day small{display:block;font-size:9px;margin-top:2px}
@@ -46,18 +52,17 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .primary{border:0;background:#42ad5b;color:#fff}.secondary{border:1px solid #dfe4e0;background:#fff}
 .project-item{display:flex;align-items:center;border:1px solid #e1e5e2;border-radius:12px;padding:12px;margin:8px 0}
 .project-main{flex:1;border:0;background:none;text-align:left}.project-main b{display:block}.project-main small{color:#7b827d}
-.icon-btn{border:0;background:none;font-size:20px;padding:6px}
-.danger{color:#d84a4a}
 .row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #edf0ed}
-.wheels{display:flex;justify-content:center;gap:12px;margin:14px 0}
-.wheel{width:120px;height:172px;border:1px solid #dfe4e0;border-radius:14px;overflow:hidden;position:relative;background:#fafbfa}
+.danger{background:#e24b4b!important;color:#fff!important;border:0!important}
+.note{text-align:center;color:#7b827d;font-size:11px;line-height:1.6}
+.empty{text-align:center;color:#7b827d;padding:28px}
+.wheels{display:flex;justify-content:center;gap:12px;margin:16px 0}
+.wheel{width:120px;height:172px;border:1px solid #dfe4e0;border-radius:14px;overflow:hidden;position:relative;background:#fafbfa;touch-action:none;user-select:none}
 .wheel-list{transform:translateY(65px)}
 .wheel:after{content:"";position:absolute;left:0;right:0;top:65px;height:40px;border-top:1px solid #bdd4c2;border-bottom:1px solid #bdd4c2;background:#42ad5b10;pointer-events:none}
 .wheel-item{height:40px;display:flex;align-items:center;justify-content:center;color:#8a908c}
 .wheel-item.selected{font-weight:800;color:#184c27}
-.note{text-align:center;color:#7b827d;font-size:11px}
-.empty{text-align:center;color:#7b827d;padding:28px}
-.auth-note{font-size:12px;color:#7b827d;line-height:1.6}
+.warning{background:#fff5f5;border:1px solid #f2cccc;border-radius:12px;padding:12px;color:#b43b3b;font-size:12px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -69,6 +74,6 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 </nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./study.js?v=2"></script>
+<script src="./study.js?v=3"></script>
 </body>
 </html>

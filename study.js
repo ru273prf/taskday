@@ -1,15 +1,18 @@
 (()=>{"use strict";
-const SUPABASE_URL="https://uiyksvrxcfowdkmnsdeu.supabase.co";
-const SUPABASE_KEY="sb_publishable_18Sdy8EEn-wVDIicAYKFtg_2UWaJ6Zs";
+const SUPABASE_URL='https://uiyksvrxcfowdkmnsdeu.supabase.co';
+const SUPABASE_KEY='sb_publishable_18Sdy8EEn-wVDIicAYKFtg_2UWaJ6Zs';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
 const dateOf=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const diffDays=(a,b)=>Math.round((dateOf(b)-dateOf(a))/86400000);
 const fmt=k=>{const d=dateOf(k);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 const minutesText=m=>`${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
 const money=m=>Math.round(m/60*1250).toLocaleString("ja-JP");
-let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date());
+const DAY=86400000, MONTH_DAYS=30;
+let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date()),calendarMonth=new Date();
 
 async function init(){
  const {data,error}=await sb.auth.getSession();
@@ -21,11 +24,7 @@ async function init(){
  render();
  sb.auth.onAuthStateChange(async(_,session)=>{
   user=session?.user||null;
-  if(user){
-   await load();
-   if(!currentId&&state.projects[0])currentId=state.projects[0].id;
-   render();
-  }
+  if(user){await load();if(!currentId&&state.projects[0])currentId=state.projects[0].id;render();}
  });
 }
 async function load(){
@@ -34,123 +33,206 @@ async function load(){
   sb.from("study_logs").select("*").order("study_date",{ascending:true}),
   sb.from("study_goal_history").select("*").order("change_date",{ascending:true})
  ]);
- const errors=[
-  ["study_projects",p.error],
-  ["study_logs",l.error],
-  ["study_goal_history",g.error]
- ].filter(([,e])=>e);
+ const errors=[["study_projects",p.error],["study_logs",l.error],["study_goal_history",g.error]].filter(([,e])=>e);
  if(errors.length){
-  console.error("Study data load errors:", errors);
-  const detail=errors.map(([name,e])=>`${name}: ${e.message||e.code||"unknown error"}`).join("\n");
+  console.error("Study data load errors:",errors);
+  const detail=errors.map(([n,e])=>`${n}: ${e.message||e.code||"unknown error"}`).join("\n");
   alert("勉強時間データの読み込みに失敗しました。\n\n"+detail);
  }
- state.projects=p.data||[];
- state.logs=l.data||[];
- state.goals=g.data||[];
+ state.projects=p.data||[];state.logs=l.data||[];state.goals=g.data||[];
 }
-function auth(){
- $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><p class="auth-note">TaskDayと同じアカウントで利用します。ログインすると、勉強時間データはTaskDayのタスクデータとは別テーブルに保存されます。</p><button class="primary" onclick="login()">ログイン</button></div>`;
-}
+function auth(){$("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><p class="note">TaskDayと同じアカウントで利用します。</p><button class="primary" onclick="login()">ログイン</button></div>`}
 window.login=async()=>{const email=prompt("メールアドレス");if(!email)return;const pass=prompt("パスワード");if(!pass)return;const {error}=await sb.auth.signInWithPassword({email:email.trim(),password:pass});if(error)alert(error.message)};
 function p(){return state.projects.find(x=>x.id===currentId)||state.projects[0]}
 function logsFor(pr){return state.logs.filter(x=>x.project_id===pr.id)}
 function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
+function isLong(pr){return diffDays(pr.start_date,pr.end_date)>MONTH_DAYS}
+function latestActualDate(pr){const ls=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));return ls.length?ls[ls.length-1].study_date:null}
 function render(){
- const pr=p(); if(!pr){$("#app").innerHTML=`<div class="card empty">プロジェクトがありません。<button class="primary" onclick="newProject()">＋ 新規プロジェクトを作成</button></div>`;return}
- const t=total(pr), isMoney=mode==="money";
- const target=isMoney?money(pr.goal_minutes)+"円":minutesText(pr.goal_minutes);
+ const pr=p();
+ if(!pr){$("#app").innerHTML=`<div class="card empty">プロジェクトがありません。<button class="primary" onclick="projects()">＋ プロジェクトを作成</button></div>`;return}
+ const t=total(pr),isMoney=mode==="money";
+ const targetValue=isMoney?money(pr.goal_minutes)+"円":minutesText(pr.goal_minutes);
+ const totalValue=isMoney?money(t)+"円":minutesText(t);
  $("#app").innerHTML=`<header><button class="project-btn" onclick="projects()">${esc(pr.name)} ▾</button><button class="settings" onclick="settings()">⚙ 設定</button></header>
  <div class="card">
   <div class="meta">${fmt(pr.start_date)} ～ ${fmt(pr.end_date)}</div>
-  <div class="goal">目標：${target}</div>
-  <div class="summary"><div><b>${minutesText(t)}</b><span>これまでの合計時間</span></div><div><b>${money(t)}円</b><span>これまでの合計金額</span></div></div>
-  <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
+  <div class="summary"><div><b>${targetValue}</b><span>目標${isMoney?"金額":"時間"}</span></div><div><b>${totalValue}</b><span>これまでの合計${isMoney?"金額":"時間"}</span></div></div>
+  <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button>${isLong(pr)?`<button onclick="toggleScale()">${viewMode(pr)==="full"?"1か月表示":"全期間"}</button>`:""}</div>
   ${chart(pr,isMoney)}
   <div class="legend"><span><i></i>目標</span><span><i class="actual"></i>実績</span></div>
  </div>
- <div class="card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
+ <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
  <button class="plus" onclick="logDay('${selectedDate}')">＋</button>`;
 }
+let scaleMode="auto";
+function viewMode(pr){return isLong(pr)?scaleMode:"full"}
+function toggleScale(){scaleMode=scaleMode==="full"?"auto":"full";render()}
 function chart(pr,moneyMode){
- const W=700,H=300,L=55,R=18,T=18,B=45,start=dateOf(pr.start_date),end=dateOf(pr.end_date);
- const days=Math.max(1,Math.round((end-start)/86400000));
- const totalVal=pr.goal_minutes, max=moneyMode?Math.max(1,totalVal/60*1250):Math.max(1,totalVal);
- const x=d=>L+Math.max(0,Math.min(days,(d-start)/86400000))/days*(W-L-R);
- const y=v=>H-B-v/max*(H-T-B);
+ const W=700,H=310,L=60,R=18,T=18,B=48;
+ let viewStart=dateOf(pr.start_date),viewEnd=dateOf(pr.end_date);
+ if(isLong(pr)&&scaleMode!=="full"){
+  const latest=latestActualDate(pr)||key(new Date());
+  const latestD=dateOf(Math.max(pr.start_date,Math.min(pr.end_date,latest)));
+  viewStart=addDays(latestD,-MONTH_DAYS);
+  if(viewStart<dateOf(pr.start_date))viewStart=dateOf(pr.start_date);
+  viewEnd=addDays(viewStart,MONTH_DAYS);
+  if(viewEnd>dateOf(pr.end_date)){viewEnd=dateOf(pr.end_date);viewStart=addDays(viewEnd,-MONTH_DAYS);if(viewStart<dateOf(pr.start_date))viewStart=dateOf(pr.start_date)}
+ }
+ const days=Math.max(1,Math.round((viewEnd-viewStart)/DAY));
+ const actuals=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));
+ const cumulativeAt=date=>actuals.filter(x=>x.study_date<=key(date)).reduce((a,x)=>a+x.minutes,0);
+ const maxActual=Math.max(0,...actuals.filter(x=>x.study_date>=key(viewStart)&&x.study_date<=key(viewEnd)).map(x=>cumulativeAt(dateOf(x.study_date))));
+ const maxGoal=Math.max(pr.goal_minutes,...state.goals.filter(g=>g.project_id===pr.id).map(g=>g.goal_minutes),1);
+ const maxVal=moneyMode?Math.max(1,maxGoal/60*1250,maxActual/60*1250):Math.max(1,maxGoal,maxActual);
+ const x=d=>L+Math.max(0,Math.min(days,(d-viewStart)/DAY))/days*(W-L-R);
+ const y=v=>H-B-v/maxVal*(H-T-B);
  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}">`;
- for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${moneyMode?Math.round(v).toLocaleString():Math.round(v)}</text>`}
- [0,Math.round(days/2),days].forEach(n=>{const d=new Date(start.getTime()+n*86400000);s+=`<text x="${x(d)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#89908a">${d.getMonth()+1}/${d.getDate()}</text>`});
+ for(let i=0;i<=4;i++){const v=maxVal*i/4,yy=y(v);s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${moneyMode?Math.round(v).toLocaleString():Math.round(v)}</text>`}
+ [0,Math.round(days/2),days].forEach(n=>{const d=addDays(viewStart,n);s+=`<text x="${x(d)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#89908a">${d.getMonth()+1}/${d.getDate()}</text>`});
  const history=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>a.change_date.localeCompare(b.change_date));
- const segments=[];let from=start,fromVal=0,currentTarget=pr.goal_minutes,currentEnd=end;
- history.forEach(g=>{const cd=dateOf(g.change_date);segments.push([from,cd,fromVal,g.value_at_change]);from=cd;fromVal=g.value_at_change;currentTarget=g.goal_minutes;currentEnd=dateOf(g.end_date)});
- segments.push([from,currentEnd,fromVal,currentTarget]);
- segments.forEach(seg=>{const [a,b,av,bv]=seg;const A=moneyMode?av/60*1250:av,B=moneyMode?bv/60*1250:bv;s+=`<line x1="${x(a)}" y1="${y(A)}" x2="${x(b)}" y2="${y(B)}" stroke="#555" stroke-width="2" stroke-dasharray="5 6"/>`});
+ const points=[{start:pr.start_date,end:pr.end_date,startVal:0,endVal:pr.goal_minutes}];
+ let lastStart=pr.start_date,lastVal=0;
+ history.forEach(g=>{points[points.length-1].end=g.change_date;points[points.length-1].endVal=g.value_at_change;points.push({start:g.change_date,end:g.end_date,startVal:g.value_at_change,endVal:g.goal_minutes});lastStart=g.change_date;lastVal=g.value_at_change});
+ points.forEach(seg=>{
+  const a=dateOf(seg.start),b=dateOf(seg.end);
+  if(b<viewStart||a>viewEnd)return;
+  const av=moneyMode?seg.startVal/60*1250:seg.startVal,bv=moneyMode?seg.endVal/60*1250:seg.endVal;
+  s+=`<line x1="${x(a)}" y1="${y(av)}" x2="${x(b)}" y2="${y(bv)}" stroke="#555" stroke-width="2" stroke-dasharray="5 6"/>`;
+ });
  let cum=0,pts=[];
- logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date)).forEach(l=>{cum+=l.minutes;const v=moneyMode?cum/60*1250:cum;pts.push(`${x(dateOf(l.study_date))},${y(v)}`)});
+ actuals.forEach(l=>{cum+=l.minutes;const d=dateOf(l.study_date);if(d>=viewStart&&d<=viewEnd){const v=moneyMode?cum/60*1250:cum;pts.push(`${x(d)},${y(v)}`)}});
  if(pts.length){s+=`<polyline points="${pts.join(" ")}" fill="none" stroke="#42ad5b" stroke-width="4"/>`;pts.forEach(q=>{const [cx,cy]=q.split(",");s+=`<circle cx="${cx}" cy="${cy}" r="4" fill="#42ad5b"/>`})}
- return s+"</svg>";
+ s+="</svg>";
+ if(isLong(pr)&&scaleMode!=="full")s+=`<div class="chart-note">直近1か月を表示中（全期間を見るには「全期間」を押してください）</div>`;
+ return s;
 }
 function calendar(pr){
- const start=dateOf(pr.start_date),end=dateOf(pr.end_date),n=Math.max(1,Math.round((end-start)/86400000)+1),days=[];
- for(let i=0;i<n;i++){const d=new Date(start.getTime()+i*86400000),k=key(d),l=logAt(pr,k);days.push(`<button class="day ${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" onclick="selectDay('${k}')">${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`)}
- return `<div class="calendar">${["日","月","火","水","木","金","土"].map(x=>`<div class="week">${x}</div>`).join("")}${days.join("")}</div>`;
+ const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),startGrid=new Date(y,m,1-first.getDay()),endGrid=new Date(y,m+1,0+6-last.getDay());
+ let cells="";
+ for(let d=new Date(startGrid);d<=endGrid;d=addDays(d,1)){
+  const k=key(d),l=logAt(pr,k),inRange=k>=pr.start_date&&k<=pr.end_date;
+  cells+=`<button class="day ${d.getMonth()!==m?"other ":""}${inRange?"in-range ":""}${l?.minutes?"has ":""}${k===selectedDate?"selected":""}" onclick="selectDay('${k}')">${d.getDate()}${l?`<small>${Math.floor(l.minutes/60)}h${l.minutes%60?String(l.minutes%60).padStart(2,"0"):""}</small>`:""}</button>`;
+ }
+ return `<div class="calhead"><button onclick="changeMonth(-1)">‹</button><div class="month-title">${y}年${m+1}月</div><button onclick="changeMonth(1)">›</button></div><div class="week">${["日","月","火","水","木","金","土"].map(x=>`<div>${x}</div>`).join("")}</div><div class="grid">${cells}</div>`;
 }
-window.selectDay=k=>{selectedDate=k;render();logDay(k)}
+window.changeMonth=n=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+n,1);render()}
+window.selectDay=k=>{
+ const pr=p();
+ selectedDate=k;
+ render();
+ if(k>=pr.start_date&&k<=pr.end_date)logDay(k);
+ else alert("この日はプロジェクト期間外です。");
+}
 window.projects=function projects(){
  const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
  open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="close()">閉じる</button>`);
 }
-window.switchProject=id=>{currentId=id;close();render()};
-window.settings=function settings(){open(`<h2>設定</h2><div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div><div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div><div class="row"><button onclick="newProject()">＋ 新規プロジェクト</button></div><div class="row"><button class="danger" onclick="deleteProject()">🗑 プロジェクト削除</button></div><button class="secondary" onclick="close()">閉じる</button>`)}
-window.newProject=function newProject(){open(`<h2>新規プロジェクト</h2><label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策"><label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}"><label class="label">目標終了日</label><input id="pe" class="input" type="date"><label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60"><button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
-window.createProject=async()=>{
- const name=$("#pn").value.trim()||"新規プロジェクト";
- const start=$("#ps").value;
- const end=$("#pe").value||start;
- const h=Number($("#pg").value||0);
- if(!start){alert("開始日を選択してください");return}
- if(end<start){alert("終了日は開始日以降にしてください");return}
- if(!Number.isFinite(h)||h<0){alert("目標時間を正しく入力してください");return}
- if(!user){alert("ログイン状態を確認できません。ページを再読み込みしてください。");return}
- const {data,error}=await sb.from("study_projects").insert({
-  user_id:user.id,name,start_date:start,end_date:end,goal_minutes:Math.round(h*60)
- }).select().single();
- if(error){console.error(error);alert("プロジェクトを作成できませんでした。\n\n"+error.message);return}
- state.projects.push(data);
- currentId=data.id;
- close();
- render();
+window.switchProject=id=>{currentId=id;const pr=p();calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);close();render()};
+window.settings=function settings(){
+ open(`<h2>設定</h2>
+ <div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div>
+ <div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div>
+ <div class="row"><button class="danger" style="background:none!important;color:#d84a4a!important" onclick="deleteProjectList()">🗑 プロジェクト削除</button></div>
+ <button class="secondary" onclick="close()">閉じる</button>`);
 }
-window.goalEdit=function goalEdit(){const pr=p();open(`<h2>目標設定・変更</h2><label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" value="${pr.end_date}"><label class="label">新しい目標勉強時間（時間）</label><input id="gg" class="input" type="number" step="5" value="${pr.goal_minutes/60}"><p class="note">変更前の目標線と過去の実績は保存され、変更時点の実績座標から新しい目標線が始まります。</p><button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
-window.saveGoal=async()=>{const pr=p(),end=$("#ge").value,h=Number($("#gg").value),change=selectedDate<=key(new Date())?selectedDate:key(new Date()),value=logsFor(pr).filter(x=>x.study_date<=change).reduce((a,x)=>a+x.minutes,0);const {data,error}=await sb.from("study_goal_history").insert({project_id:pr.id,user_id:user.id,change_date:change,value_at_change:value,goal_minutes:h*60,end_date:end}).select().single();if(error){alert(error.message);return}state.goals.push(data);pr.end_date=end;pr.goal_minutes=h*60;const r=await sb.from("study_projects").update({end_date:end,goal_minutes:h*60}).eq("id",pr.id).eq("user_id",user.id);if(r.error){alert(r.error.message);return}close();render()}
-window.deleteProject=function deleteProject(){const pr=p();open(`<h2>プロジェクト削除</h2><p>「${esc(pr.name)}」と、このプロジェクトの勉強記録・目標履歴を削除します。</p><button class="primary" style="background:#e24a4a" onclick="confirmDelete()">削除する</button><button class="secondary" onclick="close()">キャンセル</button>`)}
-window.confirmDelete=async()=>{const pr=p();const r=await sb.from("study_projects").delete().eq("id",pr.id).eq("user_id",user.id);if(r.error){alert(r.error.message);return}state.projects=state.projects.filter(x=>x.id!==pr.id);state.logs=state.logs.filter(x=>x.project_id!==pr.id);state.goals=state.goals.filter(x=>x.project_id!==pr.id);currentId=state.projects[0]?.id||null;close();render()}
-window.logDay=function logDay(date){const pr=p(),old=logAt(pr,date),h=Math.floor((old?.minutes||0)/60),m=(old?.minutes||0)%60;open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",Array.from({length:25},(_,i)=>i*5),h)}${wheel("mins",Array.from({length:12},(_,i)=>i*5),m)}</div><div class="note">上下にスワイプして5分刻みで選択</div><button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="close()">戻る</button>`)}
-function wheel(name,vals,sel){const idx=vals.indexOf(sel),safe=idx<0?0:idx;return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-index="${safe}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===safe?"selected":""}">${String(v).padStart(2,"0")}</div>`).join("")}</div></div>`}
+window.newProject=function newProject(){
+ open(`<h2>新規プロジェクト</h2>
+ <label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策">
+ <label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}">
+ <label class="label">目標終了日</label><input id="pe" class="input" type="date">
+ <label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60">
+ <button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="close()">戻る</button>`);
+}
+window.createProject=async()=>{
+ const name=$("#pn").value.trim()||"新規プロジェクト",start=$("#ps").value,end=$("#pe").value||start,h=Number($("#pg").value||0);
+ if(!start||end<start||!Number.isFinite(h)||h<0){alert("入力内容を確認してください。");return}
+ const {data,error}=await sb.from("study_projects").insert({user_id:user.id,name,start_date:start,end_date:end,goal_minutes:Math.round(h*60)}).select().single();
+ if(error){alert("プロジェクトを作成できませんでした。\n\n"+error.message);return}
+ state.projects.push(data);currentId=data.id;calendarMonth=new Date(dateOf(start).getFullYear(),dateOf(start).getMonth(),1);close();render();
+}
+window.deleteProjectList=function deleteProjectList(){
+ const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="deleteConfirm('${x.id}')"><b>${esc(x.name)}</b><small>${fmt(x.start_date)} ～ ${fmt(x.end_date)}</small></button></div>`).join("");
+ open(`<h2>削除するプロジェクトを選択</h2>${items||'<div class="empty">プロジェクトがありません。</div>'}<button class="secondary" onclick="settings()">戻る</button>`);
+}
+window.deleteConfirm=function deleteConfirm(id){
+ const pr=state.projects.find(x=>x.id===id);if(!pr)return;
+ open(`<h2>本当に削除しますか？</h2><p>「${esc(pr.name)}」と、このプロジェクトの勉強記録・目標履歴を削除します。<br>この操作は元に戻せません。</p>
+ <button class="primary danger" onclick="confirmDelete('${id}')">削除する</button>
+ <button class="secondary" onclick="deleteProjectList()">しない</button>`);
+}
+window.confirmDelete=async id=>{
+ const r=await sb.from("study_projects").delete().eq("id",id).eq("user_id",user.id);
+ if(r.error){alert(r.error.message);return}
+ state.projects=state.projects.filter(x=>x.id!==id);state.logs=state.logs.filter(x=>x.project_id!==id);state.goals=state.goals.filter(x=>x.project_id!==id);
+ currentId=state.projects[0]?.id||null;close();render();
+}
+function goalLineAt(pr,date){
+ const targetDate=dateOf(date),hist=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>a.change_date.localeCompare(b.change_date));
+ let start=dateOf(pr.start_date),startVal=0,end=dateOf(pr.end_date),endVal=pr.goal_minutes;
+ for(const g of hist){
+  const ge=dateOf(g.change_date);
+  if(targetDate<=ge)break;
+  start=ge;startVal=g.value_at_change;end=dateOf(g.end_date);endVal=g.goal_minutes;
+ }
+ const span=Math.max(1,(end-start)/DAY);
+ const pos=Math.max(0,Math.min(1,(targetDate-start)/DAY/span));
+ return startVal+(endVal-startVal)*pos;
+}
+window.goalEdit=function goalEdit(){
+ const pr=p();
+ open(`<h2>目標設定・変更</h2>
+ <label class="label">新しい目標開始日</label><input id="gs" class="input" type="date" min="${pr.start_date}" value="${selectedDate>=pr.start_date&&selectedDate<=pr.end_date?selectedDate:key(new Date())}">
+ <label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" min="${pr.start_date}" value="${pr.end_date}">
+ <label class="label">新しい目標勉強時間（時間）</label><input id="gg" class="input" type="number" min="0" step="5" value="${pr.goal_minutes/60}">
+ <p class="note">新しい目標開始日までは、それまでの目標の傾きを維持します。開始日以降は、新しい目標開始時点の目標座標から新しい終了日・目標時間へ向かう傾きになります。</p>
+ <button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="close()">戻る</button>`);
+}
+window.saveGoal=async()=>{
+ const pr=p(),start=$("#gs").value,end=$("#ge").value,h=Number($("#gg").value);
+ if(!start||!end||end<=start||start<pr.start_date||!Number.isFinite(h)||h<0){alert("新しい目標の期間・時間を確認してください。");return}
+ const valueAt=goalLineAt(pr,start);
+ const {data,error}=await sb.from("study_goal_history").insert({project_id:pr.id,user_id:user.id,change_date:start,value_at_change:Math.round(valueAt),goal_minutes:Math.round(h*60),end_date:end}).select().single();
+ if(error){alert("目標を変更できませんでした。\n\n"+error.message);return}
+ state.goals.push(data);
+ pr.end_date=end;pr.goal_minutes=Math.round(h*60);
+ const r=await sb.from("study_projects").update({end_date:end,goal_minutes:Math.round(h*60)}).eq("id",pr.id).eq("user_id",user.id);
+ if(r.error){alert(r.error.message);return}
+ close();render();
+}
+window.logDay=function logDay(date){
+ const pr=p(),old=logAt(pr,date);
+ if(date<pr.start_date||date>pr.end_date){alert("この日はプロジェクト期間外です。");return}
+ const hm=old?.minutes||0,h=Math.floor(hm/60),m=hm%60;
+ const hours=Array.from({length:16},(_,i)=>i),mins=Array.from({length:12},(_,i)=>i*5);
+ open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",hours,h)}${wheel("mins",mins,m)}</div><div class="note">上下にスワイプして時間・分を選択<br>時間：0～15時間　分：0～55分（5分刻み）</div>
+ <button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="close()">戻る</button>`);
+}
+function wheel(name,vals,sel){
+ const idx=Math.max(0,vals.indexOf(sel));
+ return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-index="${idx}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${String(v).padStart(2,"0")}</div>`).join("")}</div></div>`;
+}
 function wheelBind(el){
- let y=0;
- const move=(clientY)=>{
-   const dy=clientY-y;
-   if(Math.abs(dy)<=18)return;
-   let i=Number(el.dataset.index)+(dy<0?1:-1);
-   const vals=JSON.parse(el.dataset.values);
-   i=Math.max(0,Math.min(vals.length-1,i));
-   el.dataset.index=i;
-   el.style.transform=`translateY(${65-i*40}px)`;
-   [...el.children].forEach((x,j)=>x.classList.toggle("selected",j===i));
-   y=clientY;
- };
+ let y=0,drag=false;
+ const move=clientY=>{const dy=clientY-y;if(Math.abs(dy)<18)return;const vals=JSON.parse(el.dataset.values);let i=Number(el.dataset.index)+(dy<0?1:-1);i=Math.max(0,Math.min(vals.length-1,i));el.dataset.index=i;el.style.transform=`translateY(${65-i*40}px)`;[...el.children].forEach((x,j)=>x.classList.toggle("selected",j===i));y=clientY};
  el.ontouchstart=e=>{y=e.touches[0].clientY};
  el.ontouchmove=e=>{e.preventDefault();move(e.touches[0].clientY)};
- el.onmousedown=e=>{y=e.clientY;el.onmousemove=q=>move(q.clientY)};
- el.onmouseup=()=>el.onmousemove=null;
- el.onmouseleave=()=>el.onmousemove=null;
+ el.ontouchend=()=>{};
+ el.onmousedown=e=>{drag=true;y=e.clientY};
+ el.onmousemove=e=>{if(drag)move(e.clientY)};
+ el.onmouseup=()=>{drag=false};
+ el.onmouseleave=()=>{drag=false};
 }
-window.saveLog=async date=>{const a=$("#hoursWheel"),b=$("#minsWheel"),hv=JSON.parse(a.dataset.values)[Number(a.dataset.index)],mv=JSON.parse(b.dataset.values)[Number(b.dataset.index)],minutes=hv*60+mv,pr=p(),old=logAt(pr,date);let r;if(old)r=await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id);else r=await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});if(r.error){alert(r.error.message);return}await load();close();render()}
+window.saveLog=async date=>{
+ const a=$("#hoursWheel"),b=$("#minsWheel"),hv=JSON.parse(a.dataset.values)[Number(a.dataset.index)],mv=JSON.parse(b.dataset.values)[Number(b.dataset.index)],minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
+ let r=old?await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id):await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});
+ if(r.error){alert("勉強時間を保存できませんでした。\n\n"+r.error.message);return}
+ await load();close();render();
+}
 window.toggleMode=function toggleMode(){mode=mode==="hours"?"money":"hours";render()}
-function open(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show");setTimeout(()=>{document.querySelectorAll(".wheel-list").forEach(w=>{w.style.transform=`translateY(${65-Number(w.dataset.index)*40}px)`;wheelBind(w)})},0)}
+function open(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show");setTimeout(()=>document.querySelectorAll(".wheel-list").forEach(w=>{w.style.transform=`translateY(${65-Number(w.dataset.index)*40}px)`;wheelBind(w)}),0)}
 function close(){$("#modal").classList.remove("show")}
-$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")close()});
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")return});
 init();
 })();
