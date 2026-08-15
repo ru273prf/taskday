@@ -187,7 +187,7 @@ function render(){
   <div class="legend"><span><i></i>目標</span><span><i class="actual"></i>実績</span></div>
  </div>
  <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
- `;
+ <button class="plus" onclick="logDay('${selectedDate}')">＋</button>`;
  }catch(err){
   console.error("Study render error:",err);
   $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><div class="warning">画面の表示中にエラーが発生しました。ページを再読み込みしてください。<br><small>${esc(err?.message||err)}</small></div></div>`;
