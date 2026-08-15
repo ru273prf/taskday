@@ -61,7 +61,7 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .wheel-list{transform:translateY(65px)}
 .wheel:after{content:"";position:absolute;left:0;right:0;top:65px;height:40px;border-top:1px solid #bdd4c2;border-bottom:1px solid #bdd4c2;background:#42ad5b10;pointer-events:none}
 .wheel-item{height:40px;display:flex;align-items:center;justify-content:center;color:#8a908c}
-.wheel-item.selected{font-weight:800;color:#184c27}
+.wheel-item.selected{font-weight:900;color:#111!important}
 .warning{background:#fff5f5;border:1px solid #f2cccc;border-radius:12px;padding:12px;color:#b43b3b;font-size:12px;line-height:1.6}
 </style>
 
@@ -84,6 +84,10 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .calendar-card .day.saturday,.calendar-card .day.saturday .day-number{color:#3478d4!important}
 .calendar-card .day.selected{color:#fff!important}
 </style>
+<style id="study-chart-v25">
+.wheel-list{transition:transform .08s ease-out;touch-action:none}
+.wheel-item.selected{font-weight:900!important;color:#111!important}
+</style>
 </head>
 <body>
 <div id="app" class="app"></div>
@@ -94,6 +98,6 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 </nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./study.js?v=6"></script>
+<script src="./study.js?v=7"></script>
 </body>
 </html>

@@ -84,42 +84,82 @@ function viewMode(pr){return isLong(pr)?scaleMode:"full"}
 window.toggleScale=function toggleScale(){scaleMode=scaleMode==="full"?"auto":"full";render()}
 function chart(pr,moneyMode){
  const W=700,H=310,L=60,R=18,T=18,B=48;
- let viewStart=dateOf(pr.start_date),viewEnd=dateOf(pr.end_date);
+ const startDate=dateOf(pr.start_date), endDate=dateOf(pr.end_date);
+ let viewStart,viewEnd;
  if(isLong(pr)&&scaleMode!=="full"){
   const latest=latestActualDate(pr);
-  let latestD=latest?dateOf(latest):dateOf(pr.start_date);
-  const startD=dateOf(pr.start_date), endD=dateOf(pr.end_date);
-  if(latestD<startD) latestD=startD;
-  if(latestD>endD) latestD=endD;
-  viewStart=addDays(latestD,-MONTH_DAYS);
-  if(viewStart<dateOf(pr.start_date))viewStart=dateOf(pr.start_date);
-  viewEnd=addDays(viewStart,MONTH_DAYS);
-  if(viewEnd>dateOf(pr.end_date)){viewEnd=dateOf(pr.end_date);viewStart=addDays(viewEnd,-MONTH_DAYS);if(viewStart<dateOf(pr.start_date))viewStart=dateOf(pr.start_date)}
+  const anchor=latest?dateOf(latest):startDate;
+  viewStart=addDays(anchor,-29);
+  viewEnd=addDays(viewStart,30);
+  if(viewEnd>endDate){viewEnd=endDate;viewStart=addDays(viewEnd,-30)}
+  // For a long project, the one-month window may begin before the project starts.
+  // Keep the window anchored to actual progress when possible.
+ }else{
+  // Always show one day before the project start so the target line visibly begins at (start, 0).
+  viewStart=addDays(startDate,-1);
+  viewEnd=endDate;
  }
+ if(viewEnd<=viewStart)viewEnd=addDays(viewStart,1);
  const days=Math.max(1,Math.round((viewEnd-viewStart)/DAY));
  const actuals=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));
- const cumulativeAt=date=>actuals.filter(x=>x.study_date<=key(date)).reduce((a,x)=>a+x.minutes,0);
- const maxActual=Math.max(0,...actuals.filter(x=>x.study_date>=key(viewStart)&&x.study_date<=key(viewEnd)).map(x=>cumulativeAt(dateOf(x.study_date))));
- const maxGoal=Math.max(pr.goal_minutes,...state.goals.filter(g=>g.project_id===pr.id).map(g=>g.goal_minutes),1);
- const maxVal=moneyMode?Math.max(1,maxGoal/60*1250,maxActual/60*1250):Math.max(1,maxGoal,maxActual);
+ const cumulativeAt=d=>actuals.filter(x=>x.study_date<=key(d)).reduce((a,x)=>a+x.minutes,0);
+ const baseline=(isLong(pr)&&scaleMode!=="full")?cumulativeAt(viewStart):0;
+ const relativeActual=d=>cumulativeAt(d)-baseline;
  const x=d=>L+Math.max(0,Math.min(days,(d-viewStart)/DAY))/days*(W-L-R);
- const y=v=>H-B-v/maxVal*(H-T-B);
- let s=`<svg class="chart" viewBox="0 0 ${W} ${H}">`;
- for(let i=0;i<=4;i++){const v=maxVal*i/4,yy=y(v);s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${moneyMode?Math.round(v).toLocaleString():Math.round(v)}</text>`}
- [0,Math.round(days/2),days].forEach(n=>{const d=addDays(viewStart,n);s+=`<text x="${x(d)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#89908a">${d.getMonth()+1}/${d.getDate()}</text>`});
  const history=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>a.change_date.localeCompare(b.change_date));
  const points=[{start:pr.start_date,end:pr.end_date,startVal:0,endVal:pr.goal_minutes}];
- let lastStart=pr.start_date,lastVal=0;
- history.forEach(g=>{points[points.length-1].end=g.change_date;points[points.length-1].endVal=g.value_at_change;points.push({start:g.change_date,end:g.end_date,startVal:g.value_at_change,endVal:g.goal_minutes});lastStart=g.change_date;lastVal=g.value_at_change});
+ history.forEach(g=>{
+  const prev=points[points.length-1];
+  prev.end=g.change_date;
+  prev.endVal=g.value_at_change;
+  points.push({start:g.change_date,end:g.end_date,startVal:g.value_at_change,endVal:g.goal_minutes});
+ });
+ const toValue=v=>moneyMode?v/60*1250:v;
+ let goalVals=[];
  points.forEach(seg=>{
   const a=dateOf(seg.start),b=dateOf(seg.end);
   if(b<viewStart||a>viewEnd)return;
-  const av=moneyMode?seg.startVal/60*1250:seg.startVal,bv=moneyMode?seg.endVal/60*1250:seg.endVal;
-  s+=`<line x1="${x(a)}" y1="${y(av)}" x2="${x(b)}" y2="${y(bv)}" stroke="#555" stroke-width="2" stroke-dasharray="5 6"/>`;
+  goalVals.push(toValue(seg.startVal)-baseline,toValue(seg.endVal)-baseline);
+ });
+ const actualVals=actuals.filter(l=>dateOf(l.study_date)>=viewStart&&dateOf(l.study_date)<=viewEnd).map(l=>toValue(relativeActual(dateOf(l.study_date))));
+ const maxVal=Math.max(1,...goalVals,...actualVals,0);
+ const y=v=>H-B-Math.max(0,v)/maxVal*(H-T-B);
+ let s=`<svg class="chart" viewBox="0 0 ${W} ${H}">`;
+ for(let i=0;i<=4;i++){
+  const v=maxVal*i/4,yy=y(v);
+  s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${moneyMode?Math.round(v).toLocaleString():Math.round(v)}</text>`;
+ }
+ [0,Math.round(days/2),days].forEach(n=>{const d=addDays(viewStart,n);s+=`<text x="${x(d)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#89908a">${d.getMonth()+1}/${d.getDate()}</text>`});
+ points.forEach(seg=>{
+  const a=dateOf(seg.start),b=dateOf(seg.end);
+  if(b<viewStart||a>viewEnd)return;
+  const av=toValue(seg.startVal)-baseline,bv=toValue(seg.endVal)-baseline;
+  const aa=a<viewStart?viewStart:a,bb=b>viewEnd?viewEnd:b;
+  const span=Math.max(1,(b-a)/DAY);
+  const valueAt=d=>av+(bv-av)*((d-a)/DAY)/span;
+  s+=`<line x1="${x(aa)}" y1="${y(valueAt(aa))}" x2="${x(bb)}" y2="${y(valueAt(bb))}" stroke="#555" stroke-width="2" stroke-dasharray="5 6"/>`;
+ });
+ // Mark every goal-change date explicitly on the graph.
+ history.forEach(g=>{
+  const d=dateOf(g.change_date);
+  if(d<viewStart||d>viewEnd)return;
+  s+=`<line x1="${x(d)}" x2="${x(d)}" y1="${T}" y2="${H-B}" stroke="#888" stroke-width="1" stroke-dasharray="2 4"/>`;
+  s+=`<text x="${x(d)+4}" y="${T+12}" font-size="9" fill="#666">目標変更 ${d.getMonth()+1}/${d.getDate()}</text>`;
  });
  let cum=0,pts=[];
- actuals.forEach(l=>{cum+=l.minutes;const d=dateOf(l.study_date);if(d>=viewStart&&d<=viewEnd){const v=moneyMode?cum/60*1250:cum;pts.push(`${x(d)},${y(v)}`)}});
- if(pts.length){s+=`<polyline points="${pts.join(" ")}" fill="none" stroke="#42ad5b" stroke-width="4"/>`;pts.forEach(q=>{const [cx,cy]=q.split(",");s+=`<circle cx="${cx}" cy="${cy}" r="4" fill="#42ad5b"/>`})}
+ actuals.forEach(l=>{
+  cum+=l.minutes;
+  const d=dateOf(l.study_date);
+  if(d>=viewStart&&d<=viewEnd){const v=toValue(cum-baseline);pts.push(`${x(d)},${y(v)}`)}
+ });
+ // When the window starts on a date with an existing cumulative result, anchor the actual line at the left edge.
+ if(isLong(pr)&&scaleMode!=="full"&&actuals.length&&actuals.some(l=>dateOf(l.study_date)<=viewStart)){
+  pts.unshift(`${x(viewStart)},${y(0)}`);
+ }
+ if(pts.length){
+  s+=`<polyline points="${pts.join(" ")}" fill="none" stroke="#42ad5b" stroke-width="4"/>`;
+  pts.forEach(q=>{const [cx,cy]=q.split(",");s+=`<circle cx="${cx}" cy="${cy}" r="4" fill="#42ad5b"/>`});
+ }
  s+="</svg>";
  if(isLong(pr)&&scaleMode!=="full")s+=`<div class="chart-note">直近1か月を表示中（全期間を見るには「全期間」を押してください）</div>`;
  return s;
@@ -253,7 +293,7 @@ window.goalEdit=function goalEdit(){
 }
 window.saveGoal=async()=>{
  const pr=p(),start=$("#gs").value,end=$("#ge").value,h=Number($("#gg").value);
- if(!start||!end||end<=start||start<pr.start_date||!Number.isFinite(h)||h<0){alert("新しい目標の期間・時間を確認してください。");return}
+ if(!start||!end||end<=start||start<pr.start_date||start>pr.end_date||!Number.isFinite(h)||h<0){alert("新しい目標の期間・時間を確認してください。");return}
  const valueAt=goalLineAt(pr,start);
  const {data,error}=await sb.from("study_goal_history").insert({project_id:pr.id,user_id:user.id,change_date:start,value_at_change:Math.round(valueAt),goal_minutes:Math.round(h*60),end_date:end}).select().single();
  if(error){alert("目標を変更できませんでした。\n\n"+error.message);return}
@@ -265,93 +305,40 @@ window.saveGoal=async()=>{
 }
 function bindWheels(){
  document.querySelectorAll(".wheel-list").forEach(el=>{
-  if(el.dataset.bound==="1") return;
-  el.dataset.bound="1";
-  let startY=0,lastY=0,dragging=false,acc=0;
-  const vals=JSON.parse(el.dataset.values||"[]");
-  const clamp=i=>Math.max(0,Math.min(vals.length-1,i));
-  const apply=i=>{
-   i=clamp(i);
-   el.dataset.selected=String(vals[i]);
-   el.style.transform=`translateY(${52-i*42}px)`;
-   el.querySelectorAll(".wheel-item").forEach((x,n)=>x.classList.toggle("sel",n===i));
-  };
-  const current=()=>Math.max(0,vals.indexOf(Number(el.dataset.selected)));
-  const moveBy=delta=>{
-   acc+=delta;
-   while(Math.abs(acc)>=42){
-    const dir=acc<0?1:-1;
-    apply(current()+dir);
-    acc+=dir*42;
-   }
-  };
-  el.addEventListener("pointerdown",e=>{
-   dragging=true;startY=lastY=e.clientY;acc=0;
-   el.setPointerCapture?.(e.pointerId);
-  });
-  el.addEventListener("pointermove",e=>{
-   if(!dragging)return;
-   const dy=e.clientY-lastY; lastY=e.clientY; moveBy(dy);
-  });
-  el.addEventListener("pointerup",e=>{
-   dragging=false; el.releasePointerCapture?.(e.pointerId);
-  });
-  el.addEventListener("pointercancel",()=>dragging=false);
-  el.addEventListener("wheel",e=>{
-   e.preventDefault();
-   moveBy(-Math.sign(e.deltaY)*42);
-  },{passive:false});
- });
-}
-
-window.logDay=
-function bindWheels(){
- document.querySelectorAll(".wheel-list").forEach(el=>{
-  if(el.dataset.bound==="1") return;
+  if(el.dataset.bound==="1")return;
   el.dataset.bound="1";
   const vals=JSON.parse(el.dataset.values||"[]");
   let index=Math.max(0,vals.indexOf(Number(el.dataset.selected)));
-  let startY=0,lastY=0,drag=false,acc=0;
+  let lastY=0,drag=false,carry=0;
+  const STEP=40;
   const apply=i=>{
    index=Math.max(0,Math.min(vals.length-1,i));
    el.dataset.selected=String(vals[index]);
-   el.style.transform=`translateY(${65-index*40}px)`;
+   el.style.transform=`translateY(${65-index*STEP}px)`;
    [...el.children].forEach((x,j)=>x.classList.toggle("selected",j===index));
   };
-  const move=dy=>{
-   acc+=dy;
-   while(Math.abs(acc)>=20){
-    apply(index+(acc<0?1:-1));
-    acc+=acc<0?20:-20;
+  const moveBy=dy=>{
+   carry+=dy;
+   while(Math.abs(carry)>=STEP){
+    const dir=carry<0?1:-1;
+    apply(index+dir);
+    carry+=dir*STEP;
    }
   };
-  el.addEventListener("pointerdown",e=>{
-   drag=true;startY=lastY=e.clientY;acc=0;
-   el.setPointerCapture?.(e.pointerId);
-  });
-  el.addEventListener("pointermove",e=>{
-   if(!drag)return;
-   const dy=e.clientY-lastY;lastY=e.clientY;move(dy);
-  });
-  el.addEventListener("pointerup",e=>{
-   drag=false;el.releasePointerCapture?.(e.pointerId);
-  });
-  el.addEventListener("pointercancel",()=>drag=false);
-  el.addEventListener("wheel",e=>{
-   e.preventDefault();
-   apply(index+(e.deltaY>0?1:-1));
-  },{passive:false});
+  el.addEventListener("pointerdown",e=>{drag=true;lastY=e.clientY;carry=0;el.setPointerCapture?.(e.pointerId);});
+  el.addEventListener("pointermove",e=>{if(!drag)return;const dy=e.clientY-lastY;lastY=e.clientY;moveBy(dy);});
+  el.addEventListener("pointerup",e=>{drag=false;carry=0;el.releasePointerCapture?.(e.pointerId);});
+  el.addEventListener("pointercancel",()=>{drag=false;carry=0;});
+  el.addEventListener("wheel",e=>{e.preventDefault();apply(index+(e.deltaY>0?1:-1));},{passive:false});
   apply(index);
  });
 }
-
 function logDay(date){
  const pr=p(),old=logAt(pr,date);
  if(date<pr.start_date||date>pr.end_date){alert("この日はプロジェクト期間外です。");return}
  const hm=old?.minutes||0,h=Math.floor(hm/60),m=hm%60;
  const hours=Array.from({length:16},(_,i)=>i),mins=Array.from({length:12},(_,i)=>i*5);
- open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",hours,h)}${wheel("mins",mins,m)}</div><div class="note">上下にスワイプして時間・分を選択<br>時間：0～15時間　分：0～55分（5分刻み）</div>
- <button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
+ open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",hours,h)}${wheel("mins",mins,m)}</div><div class="note">上下にスワイプして時間・分を選択<br>時間：0～15時間　分：00～55分（5分刻み）</div><button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 function wheel(name,vals,sel){
  const idx=Math.max(0,vals.indexOf(sel));
@@ -360,11 +347,13 @@ function wheel(name,vals,sel){
 }
 window.saveLog=async date=>{
  const a=$("#hoursWheel"),b=$("#minsWheel");
+ if(!a||!b){alert("時間・分の選択値を取得できませんでした。");return}
  const hv=Number(a.dataset.selected),mv=Number(b.dataset.selected),minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
  let r=old?await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id):await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});
- if(r.error){alert("勉強時間を保存できませんでした。\n\n"+r.error.message);return}
+ if(r.error){alert("勉強時間を保存できませんでした。\\n\\n"+r.error.message);return}
  await load();close();render();
 }
+
 window.toggleMode=function toggleMode(){mode=mode==="hours"?"money":"hours";render()}
 function open(html){
  $("#sheet").innerHTML=html;
@@ -373,6 +362,7 @@ function open(html){
 }
 function close(){ $("#modal").classList.remove("show"); }
 window.closeStudyModal=close;
+window.closeModal=close;
 
 $("#modal").addEventListener("click",e=>{e.stopPropagation();});
 init();
