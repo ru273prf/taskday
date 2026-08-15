@@ -1,19 +1,8 @@
 <style>
-  .countdown-inline{
-    display:inline-block;
-    margin-left:4px;
-    padding:1px 4px;
-    border-radius:4px;
-    font-size:10px;
-    line-height:1.2;
-    vertical-align:middle;
-    background:#eef5f0;
-    color:#4f6757;
-    max-width:calc(100% - 28px);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
+
+\
+.day-number-row{display:flex;align-items:center;gap:4px;min-width:0;width:100%;overflow:hidden}
+.countdown-inline{display:inline-block;flex:1 1 auto;min-width:0;margin:0;padding:0;background:transparent;border:0;border-radius:0;color:#555;font-size:11px;font-weight:400;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;text-align:left}
 </style>
 (function(){
 "use strict";
@@ -24,7 +13,7 @@ const injectedStyle=document.createElement("style");
 injectedStyle.textContent=`
 .day-detail{padding:2px 0}.day-detail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.day-detail-head h2{margin:0;font-size:24px}.day-detail-close{width:42px;height:42px;border:0;border-radius:50%;background:#f1f3f5;color:#666;font-size:32px;line-height:1;cursor:pointer}.day-detail-list{display:flex;flex-direction:column;gap:8px}.day-detail-task{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf0f4}.day-detail-task-main{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:2px 0;cursor:pointer}.day-detail-task-title{display:block;font-size:17px;font-weight:700;overflow-wrap:anywhere}.day-detail-task-date{display:block;margin-top:3px;font-size:12px;color:#8a94a6}.day-detail-plus{display:block;margin:18px auto 2px;width:58px;height:58px;border:0;border-radius:50%;background:#111;color:#fff;font-size:32px;line-height:1;cursor:pointer}
 .date-field{position:relative;height:56px;border:1px solid #e2e5ea;border-radius:14px;background:#fff;overflow:hidden}.date-display{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:#111;pointer-events:none;z-index:1}.date-field input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
-@media(max-width:600px){.card.calendar{width:100% !important;box-sizing:border-box}.grid{grid-template-columns:repeat(7,minmax(0,1fr)) !important;gap:2px !important;width:100%}.day{min-width:0 !important;width:100% !important;min-height:104px !important;padding:6px 2px !important;overflow:hidden;box-sizing:border-box}.day-number{font-size:15px !important}.cal-labels{display:block !important;margin-top:3px !important}.cal-label{display:-webkit-box !important;font-size:10px !important;line-height:1.15 !important;white-space:normal !important;overflow:hidden !important;text-overflow:ellipsis !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;margin:2px 0 !important;padding:2px 2px !important;border-radius:3px !important;word-break:break-all !important}}`;
+@media(max-width:600px){.card.calendar{width:100% !important;box-sizing:border-box}.grid{grid-template-columns:repeat(7,minmax(0,1fr)) !important;gap:2px !important;width:100%}.day{min-width:0 !important;width:100% !important;min-height:104px !important;padding:6px 2px !important;overflow:hidden;box-sizing:border-box}.day-number{font-size:15px !important}.day-number-row{gap:3px !important}.countdown-inline{font-size:9px !important;color:#555 !important;font-weight:400 !important}.cal-labels{display:block !important;margin-top:3px !important}.cal-label{display:-webkit-box !important;font-size:10px !important;line-height:1.15 !important;white-space:normal !important;overflow:hidden !important;text-overflow:ellipsis !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;margin:2px 0 !important;padding:2px 2px !important;border-radius:3px !important;word-break:break-all !important}}`;
 document.head.appendChild(injectedStyle);
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -389,12 +378,12 @@ function renderCalendar(){
    const k=key(d),sel=k===key(selectedDate),today=k===key(new Date()),holiday=jpHolidays(d.getFullYear()).has(k),dow=d.getDay();
    const labels=[
      ...state.tasks.filter(t=>t.date===k && (t.type==="short"||t.type==="long")).map(t=>({text:t.title,type:"task",id:t.id})),
-     ...state.events.filter(e=>e.date===k).map(e=>({text:e.title,type:"event",id:e.id})),
-     ...state.countdowns.filter(c=>c.date===k).map(c=>({text:c.title,type:"countdown",id:c.id}))
+     ...state.events.filter(e=>e.date===k).map(e=>({text:e.title,type:"event",id:e.id}))
    ];
    const labelHtml=labels.slice(0,5).map(x=>'<span class="cal-label '+x.type+'" data-label-kind="'+x.type+'" data-label-id="'+x.id+'">'+esc(x.text)+'</span>').join("");
    const dayClass=(d.getMonth()!==m?"other ":"")+(sel?"sel ":"")+(today?"today ":"")+(holiday?"holiday ":"")+(dow===0?"sunday ":"")+(dow===6?"saturday ":"");
-   cells+='<button class="day '+dayClass+'" data-day="'+k+'"><span class="day-number">'+d.getDate()+'</span><span class="cal-labels">'+labelHtml+'</span></button>';
+   const countdownInline=state.countdowns.filter(c=>c.date===k).map(c=>'<span class="countdown-inline" data-label-kind="countdown" data-label-id="'+c.id+'">'+esc(c.title)+'</span>').join("");
+   cells+='<button class="day '+dayClass+'" data-day="'+k+'"><span class="day-number-row"><span class="day-number">'+d.getDate()+'</span>'+countdownInline+'</span><span class="cal-labels">'+labelHtml+'</span></button>';
  }
  const k=key(selectedDate);
  const short=state.tasks.filter(t=>t.type==="short"&&t.date===k);
