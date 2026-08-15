@@ -127,14 +127,45 @@ function chart(pr,moneyMode){
 
 function holidaySet(year){
  const s=new Set();
- const add=(m,d)=>s.add(`${year}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);
- add(1,1);add(2,11);add(2,23);add(4,29);add(5,3);add(5,4);add(5,5);add(8,11);add(11,3);add(11,23);
- const nthMon=(month,n)=>{let d=new Date(year,month-1,1);let shift=(1-d.getDay()+7)%7;d.setDate(1+shift+(n-1)*7);return d.getDate()};
- add(1,nthMon(1,2)); add(7,nthMon(7,3)); add(9,nthMon(9,3)); add(10,nthMon(10,2));
- // Approximate equinoxes for common calendar use.
+ const addDate=(d)=>s.add(key(d));
+ const add=(m,d)=>addDate(new Date(year,m-1,d));
+ const nthMon=(month,n)=>{let d=new Date(year,month-1,1);let shift=(1-d.getDay()+7)%7;return new Date(year,month-1,1+shift+(n-1)*7)};
  const vernal=Math.floor(20.8431+0.242194*(year-1980)-Math.floor((year-1980)/4));
  const autumn=Math.floor(23.2488+0.242194*(year-1980)-Math.floor((year-1980)/4));
- add(3,vernal);add(9,autumn);
+ // Japan's regular national holidays.
+ add(1,1);                         // New Year's Day
+ addDate(nthMon(1,2));             // Coming of Age Day
+ add(2,11);                        // National Foundation Day
+ add(2,23);                        // Emperor's Birthday
+ add(3,vernal);                    // Vernal Equinox
+ add(4,29);                        // Showa Day
+ add(5,3); add(5,4); add(5,5);     // Constitution / Greenery / Children's Day
+ addDate(nthMon(7,3));             // Marine Day
+ add(8,11);                        // Mountain Day
+ addDate(nthMon(9,3));             // Respect for the Aged Day
+ add(9,autumn);                    // Autumnal Equinox
+ addDate(nthMon(10,2));            // Sports Day
+ add(11,3);                        // Culture Day
+ add(11,23);                       // Labor Thanksgiving Day
+ // 2020/2021 Olympic one-offs are historical and are intentionally omitted.
+ // Substitute holidays: if a holiday falls on Sunday, the next non-holiday weekday becomes a holiday.
+ const originals=[...s].map(x=>dateOf(x)).sort((a,b)=>a-b);
+ for(const d of originals){
+  if(d.getDay()===0){
+   let sub=addDays(d,1);
+   while(s.has(key(sub))) sub=addDays(sub,1);
+   addDate(sub);
+  }
+ }
+ // Citizen's holiday: a weekday between two national holidays.
+ for(let m=1;m<=12;m++){
+  const last=new Date(year,m,0).getDate();
+  for(let day=2;day<last;day++){
+   const d=new Date(year,m-1,day);
+   if(d.getDay()===0||d.getDay()===6||s.has(key(d))) continue;
+   if(s.has(key(addDays(d,-1)))&&s.has(key(addDays(d,1)))) addDate(d);
+  }
+ }
  return s;
 }
 
@@ -158,7 +189,7 @@ window.selectDay=k=>{
 }
 window.projects=function projects(){
  const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
- open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="close()">閉じる</button>`);
+ open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
 window.switchProject=id=>{currentId=id;const pr=p();calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);close();render()};
 window.settings=function settings(){
@@ -166,7 +197,7 @@ window.settings=function settings(){
  <div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div>
  <div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div>
  <div class="row"><button class="danger" style="background:none!important;color:#d84a4a!important" onclick="deleteProjectList()">🗑 プロジェクト削除</button></div>
- <button class="secondary" onclick="close()">閉じる</button>`);
+ <button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
 window.newProject=function newProject(){
  open(`<h2>新規プロジェクト</h2>
@@ -174,7 +205,7 @@ window.newProject=function newProject(){
  <label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}">
  <label class="label">目標終了日</label><input id="pe" class="input" type="date">
  <label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60">
- <button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="close()">戻る</button>`);
+ <button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 window.createProject=async()=>{
  const name=$("#pn").value.trim()||"新規プロジェクト",start=$("#ps").value,end=$("#pe").value||start,h=Number($("#pg").value||0);
@@ -218,7 +249,7 @@ window.goalEdit=function goalEdit(){
  <label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" min="${pr.start_date}" value="${pr.end_date}">
  <label class="label">新しい目標勉強時間（時間）</label><input id="gg" class="input" type="number" min="0" step="5" value="${pr.goal_minutes/60}">
  <p class="note">新しい目標開始日までは、それまでの目標の傾きを維持します。開始日以降は、新しい目標開始時点の目標座標から新しい終了日・目標時間へ向かう傾きになります。</p>
- <button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="close()">戻る</button>`);
+ <button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 window.saveGoal=async()=>{
  const pr=p(),start=$("#gs").value,end=$("#ge").value,h=Number($("#gg").value);
@@ -324,10 +355,12 @@ function logDay(date){
 }
 function wheel(name,vals,sel){
  const idx=Math.max(0,vals.indexOf(sel));
- return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-selected="${vals[idx]}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${String(v)}</div>`).join("")}</div></div>`;
+ const label=v=>name==="mins"?String(v).padStart(2,"0"):String(v);
+ return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-selected="${vals[idx]}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${label(v)}</div>`).join("")}</div></div>`;
 }
 window.saveLog=async date=>{
- const a=$("#hoursWheel"),b=$("#minsWheel"),hv=JSON.parse(a.dataset.values)[Number(a.dataset.index)],mv=JSON.parse(b.dataset.values)[Number(b.dataset.index)],minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
+ const a=$("#hoursWheel"),b=$("#minsWheel");
+ const hv=Number(a.dataset.selected),mv=Number(b.dataset.selected),minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
  let r=old?await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id):await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});
  if(r.error){alert("勉強時間を保存できませんでした。\n\n"+r.error.message);return}
  await load();close();render();
@@ -340,7 +373,7 @@ function open(html){
 }
 function close(){ $("#modal").classList.remove("show"); }
 window.closeStudyModal=close;
-window.close=close;
+
 $("#modal").addEventListener("click",e=>{e.stopPropagation();});
 init();
 })();
