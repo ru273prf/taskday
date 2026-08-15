@@ -44,28 +44,29 @@ async function ensureZeroStudyLogs(){
  const today=dateOf(new Date());
  const yesterday=addDays(today,-1);
  const rows=[];
+ const groups=new Map();
  for(const pr of state.projects){
-  const start=dateOf(pr.start_date);
-  const end=dateOf(pr.end_date);
+  const t=projectType(pr);
+  if(!groups.has(t))groups.set(t,[]);
+  groups.get(t).push(pr);
+ }
+ for(const [,projects] of groups){
+  const representative=projects[0];
+  const start=projects.reduce((d,pr)=>{const x=dateOf(pr.start_date);return x<d?x:d},dateOf(representative.start_date));
+  const end=projects.reduce((d,pr)=>{const x=dateOf(pr.end_date);return x>d?x:d},dateOf(representative.end_date));
   const through=end<yesterday?end:yesterday;
   if(through<start)continue;
-  const existing=new Set(logsFor(pr).map(x=>x.study_date));
+  const existing=new Set(logsFor(representative).map(x=>String(x.study_date).slice(0,10)));
   for(let d=start;d<=through;d=addDays(d,1)){
    const date=key(d);
-   if(!existing.has(date)){
-    rows.push({project_id:pr.id,user_id:user.id,study_date:date,minutes:0});
-   }
+   if(!existing.has(date)) rows.push({project_id:representative.id,user_id:user.id,study_date:date,minutes:0});
   }
  }
  if(!rows.length)return;
  const {data,error}=await sb.from("study_logs").insert(rows).select();
- if(error){
-  console.error("Automatic zero study-log creation failed:",error);
-  return;
- }
+ if(error){console.error("Automatic zero study-log creation failed:",error);return;}
  state.logs.push(...(data||rows));
 }
-
 async function load(){
  const [p,l,g]=await Promise.all([
   sb.from("study_projects").select("*").order("created_at",{ascending:true}),
@@ -84,8 +85,22 @@ async function load(){
 function auth(){$("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><p class="note">TaskDayと同じアカウントで利用します。</p><button class="primary" onclick="login()">ログイン</button></div>`}
 window.login=async()=>{const email=prompt("メールアドレス");if(!email)return;const pass=prompt("パスワード");if(!pass)return;const {error}=await sb.auth.signInWithPassword({email:email.trim(),password:pass});if(error)alert(error.message)};
 function p(){return state.projects.find(x=>x.id===currentId)||state.projects[0]}
-function logsFor(pr){return state.logs.filter(x=>x.project_id===pr.id)}
-function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
+function projectType(pr){const n=Number(pr?.project_type);return Number.isInteger(n)&&n>=1&&n<=10?n:1}
+function sharedProjects(pr){const t=projectType(pr);return state.projects.filter(x=>projectType(x)===t)}
+function logsFor(pr){
+ const ids=new Set(sharedProjects(pr).map(x=>x.id));
+ const byDate=new Map();
+ for(const row of state.logs){
+  if(!ids.has(row.project_id))continue;
+  const d=String(row.study_date).slice(0,10);
+  const prev=byDate.get(d);
+  // Same-type projects share one calendar/log stream. If old duplicate rows exist,
+  // prefer a non-zero record over an automatically-created zero record.
+  if(!prev || (Number(prev.minutes)||0)===0 && (Number(row.minutes)||0)>0) byDate.set(d,row);
+ }
+ return [...byDate.values()].sort((a,b)=>String(a.study_date).localeCompare(String(b.study_date)));
+}
+function total(pr){return logsFor(pr).reduce((a,x)=>a+(Number(x.minutes)||0),0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
 
 function durationDays(start,end){
@@ -300,7 +315,7 @@ window.selectDay=k=>{
  else alert("この日はプロジェクト期間外です。");
 }
 window.projects=function projects(){
- const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
+ const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>種類 ${projectType(x)}　${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
  open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
 window.switchProject=id=>{currentId=id;const pr=p();calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);close();render()};
@@ -338,17 +353,21 @@ window.saveGoal=async()=>{
 }
 
 window.newProject=function newProject(){
+ const types=Array.from({length:10},(_,i)=>i+1);
  open(`<h2>新規プロジェクト</h2>
  <label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策">
  <label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}">
  <label class="label">目標終了日</label><input id="pe" class="input" type="date">
  <label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60">
+ <label class="label">種類（同じ数字のプロジェクトはカレンダー・勉強時間を共有）</label>
+ <div class="wheels type-wheel-wrap">${wheel("projectType",types,1)}</div>
+ <div class="note">種類は1～10。例：種類1のプロジェクト同士では、同じ勉強時間の記録を共有します。</div>
  <button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 window.createProject=async()=>{
- const name=$("#pn").value.trim()||"新規プロジェクト",start=$("#ps").value,end=$("#pe").value||start,h=Number($("#pg").value||0);
- if(!start||end<start||!Number.isFinite(h)||h<0){alert("入力内容を確認してください。");return}
- const {data,error}=await sb.from("study_projects").insert({user_id:user.id,name,start_date:start,end_date:end,goal_minutes:Math.round(h*60)}).select().single();
+ const name=$("#pn").value.trim()||"新規プロジェクト",start=$("#ps").value,end=$("#pe").value||start,h=Number($("#pg").value||0),type=Number($("#projectTypeWheel")?.dataset.selected||1);
+ if(!start||end<start||!Number.isFinite(h)||h<0||!Number.isInteger(type)||type<1||type>10){alert("入力内容を確認してください。");return}
+ const {data,error}=await sb.from("study_projects").insert({user_id:user.id,name,start_date:start,end_date:end,goal_minutes:Math.round(h*60),project_type:type}).select().single();
  if(error){alert("プロジェクトを作成できませんでした。\n\n"+error.message);return}
  state.projects.push(data);currentId=data.id;calendarMonth=new Date(dateOf(start).getFullYear(),dateOf(start).getMonth(),1);close();render();
 }
@@ -363,6 +382,13 @@ window.deleteConfirm=function deleteConfirm(id){
  <button class="secondary" onclick="deleteProjectList()">しない</button>`);
 }
 window.confirmDelete=async id=>{
+ const pr=state.projects.find(x=>x.id===id);if(!pr)return;
+ const sameType=state.projects.filter(x=>x.id!==id&&projectType(x)===projectType(pr));
+ // Keep shared study records alive if another project of the same type remains.
+ if(sameType.length){
+  const moved=await sb.from("study_logs").update({project_id:sameType[0].id}).eq("project_id",id).eq("user_id",user.id);
+  if(moved.error){alert("共有勉強記録の移動に失敗しました。\n\n"+moved.error.message);return}
+ }
  const r=await sb.from("study_projects").delete().eq("id",id).eq("user_id",user.id);
  if(r.error){alert(r.error.message);return}
  state.projects=state.projects.filter(x=>x.id!==id);state.logs=state.logs.filter(x=>x.project_id!==id);state.goals=state.goals.filter(x=>x.project_id!==id);
@@ -414,8 +440,11 @@ window.saveLog=async date=>{
  const a=$("#hoursWheel"),b=$("#minsWheel");
  if(!a||!b){alert("時間・分の選択値を取得できませんでした。");return}
  const hv=Number(a.dataset.selected),mv=Number(b.dataset.selected),minutes=hv*60+mv,pr=p(),old=logAt(pr,date);
- let r=old?await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id):await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});
- if(r.error){alert("勉強時間を保存できませんでした。\\n\\n"+r.error.message);return}
+ // Same-type projects share one study-log stream.
+ let r=old
+  ?await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id)
+  :await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});
+ if(r.error){alert("勉強時間を保存できませんでした。\n\n"+r.error.message);return}
  await load();close();render();
 }
 
