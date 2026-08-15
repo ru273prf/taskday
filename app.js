@@ -442,4 +442,16 @@ refresh();
 render();
 initCloud();
 window.TaskDay={render,openTask,openCountdown};
+
+// ===== Independent Study Time app entry =====
+function ensureStudyNav(){
+  const nav=document.querySelector("#bottomNav")||document.querySelector("nav");
+  if(!nav || nav.querySelector('a[href="./study.html"]')) return;
+  const a=document.createElement("a");
+  a.href="./study.html";
+  a.textContent="勉強時間";
+  if(location.pathname.endsWith("/study.html")) a.classList.add("active");
+  nav.appendChild(a);
+}
+ensureStudyNav();
 })();
