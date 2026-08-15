@@ -49,6 +49,14 @@ function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
 function isLong(pr){return diffDays(pr.start_date,pr.end_date)>MONTH_DAYS}
 function latestActualDate(pr){const ls=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));return ls.length?ls[ls.length-1].study_date:null}
+function fullRange(){
+ viewMode="full";
+ const pr=p();
+ if(pr){
+  viewStart=pr.start_date;
+ }
+ render();
+}
 function render(){
  try{
  const pr=p();
@@ -209,7 +217,49 @@ window.saveGoal=async()=>{
  if(r.error){alert(r.error.message);return}
  close();render();
 }
-window.logDay=function logDay(date){
+window.logDay=
+function bindWheels(){
+ document.querySelectorAll(".wheel-list").forEach(el=>{
+  if(el.dataset.bound==="1") return;
+  el.dataset.bound="1";
+  let startY=0,lastY=0,dragging=false,acc=0;
+  const vals=JSON.parse(el.dataset.values||"[]");
+  const clamp=i=>Math.max(0,Math.min(vals.length-1,i));
+  const apply=i=>{
+   i=clamp(i);
+   el.dataset.selected=String(vals[i]);
+   el.style.transform=`translateY(${52-i*42}px)`;
+   el.querySelectorAll(".wheel-item").forEach((x,n)=>x.classList.toggle("sel",n===i));
+  };
+  const current=()=>Math.max(0,vals.indexOf(Number(el.dataset.selected)));
+  const moveBy=delta=>{
+   acc+=delta;
+   while(Math.abs(acc)>=42){
+    const dir=acc<0?1:-1;
+    apply(current()+dir);
+    acc+=dir*42;
+   }
+  };
+  el.addEventListener("pointerdown",e=>{
+   dragging=true;startY=lastY=e.clientY;acc=0;
+   el.setPointerCapture?.(e.pointerId);
+  });
+  el.addEventListener("pointermove",e=>{
+   if(!dragging)return;
+   const dy=e.clientY-lastY; lastY=e.clientY; moveBy(dy);
+  });
+  el.addEventListener("pointerup",e=>{
+   dragging=false; el.releasePointerCapture?.(e.pointerId);
+  });
+  el.addEventListener("pointercancel",()=>dragging=false);
+  el.addEventListener("wheel",e=>{
+   e.preventDefault();
+   moveBy(-Math.sign(e.deltaY)*42);
+  },{passive:false});
+ });
+}
+
+function logDay(date){
  const pr=p(),old=logAt(pr,date);
  if(date<pr.start_date||date>pr.end_date){alert("この日はプロジェクト期間外です。");return}
  const hm=old?.minutes||0,h=Math.floor(hm/60),m=hm%60;
@@ -244,3 +294,14 @@ function close(){$("#modal").classList.remove("show")}
 $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")return});
 init();
 })();
+
+document.addEventListener("click",e=>{
+ const b=e.target.closest("button");
+ if(!b)return;
+ const t=(b.textContent||"").trim();
+ if(t==="戻る"||t==="閉じる"){
+  e.preventDefault();
+  e.stopPropagation();
+  close();
+ }
+});

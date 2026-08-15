@@ -64,6 +64,21 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .wheel-item.selected{font-weight:800;color:#184c27}
 .warning{background:#fff5f5;border:1px solid #f2cccc;border-radius:12px;padding:12px;color:#b43b3b;font-size:12px;line-height:1.6}
 </style>
+
+<style id="study-wheel-fix">
+.wheel{touch-action:none;overflow:hidden;position:relative}
+.wheel-list{will-change:transform;user-select:none;-webkit-user-select:none}
+.wheel-item{height:42px;display:flex;align-items:center;justify-content:center}
+</style>
+
+
+<style id="study-calendar-color-fix">
+.study-cal .sunday,.study-cal .holiday{color:#d33!important}
+.study-cal .saturday{color:#3478d4!important}
+.study-cal .other.sunday,.study-cal .other.holiday{color:#e8a0a0!important}
+.study-cal .other.saturday{color:#9ab8e5!important}
+</style>
+
 </head>
 <body>
 <div id="app" class="app"></div>
