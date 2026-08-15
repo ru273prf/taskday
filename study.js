@@ -38,6 +38,34 @@ async function init(){
   if(user){await load();if(!currentId&&state.projects[0])currentId=state.projects[0].id;render();}
  });
 }
+
+async function ensureZeroStudyLogs(){
+ if(!user||!state.projects.length)return;
+ const today=dateOf(new Date());
+ const yesterday=addDays(today,-1);
+ const rows=[];
+ for(const pr of state.projects){
+  const start=dateOf(pr.start_date);
+  const end=dateOf(pr.end_date);
+  const through=end<yesterday?end:yesterday;
+  if(through<start)continue;
+  const existing=new Set(logsFor(pr).map(x=>x.study_date));
+  for(let d=start;d<=through;d=addDays(d,1)){
+   const date=key(d);
+   if(!existing.has(date)){
+    rows.push({project_id:pr.id,user_id:user.id,study_date:date,minutes:0});
+   }
+  }
+ }
+ if(!rows.length)return;
+ const {data,error}=await sb.from("study_logs").insert(rows).select();
+ if(error){
+  console.error("Automatic zero study-log creation failed:",error);
+  return;
+ }
+ state.logs.push(...(data||rows));
+}
+
 async function load(){
  const [p,l,g]=await Promise.all([
   sb.from("study_projects").select("*").order("created_at",{ascending:true}),
@@ -51,6 +79,7 @@ async function load(){
   alert("勉強時間データの読み込みに失敗しました。\n\n"+detail);
  }
  state.projects=p.data||[];state.logs=l.data||[];state.goals=g.data||[];
+ await ensureZeroStudyLogs();
 }
 function auth(){$("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><p class="note">TaskDayと同じアカウントで利用します。</p><button class="primary" onclick="login()">ログイン</button></div>`}
 window.login=async()=>{const email=prompt("メールアドレス");if(!email)return;const pass=prompt("パスワード");if(!pass)return;const {error}=await sb.auth.signInWithPassword({email:email.trim(),password:pass});if(error)alert(error.message)};
@@ -79,25 +108,34 @@ function metricMoneyFromMinutes(mins){
 }
 function currentMetrics(pr){
  const target=Number(pr.goal_minutes)||0;
+ const totalDays=Math.max(1,diffDays(pr.start_date,pr.end_date)+1);
+
+ // Goal average = final target / inclusive project days.
+ const targetAvg=target/totalDays;
+
+ // Metrics are based on TODAY, and therefore use the records through
+ // yesterday. Example: today 8/15 -> evaluate 8/12, 8/13, 8/14.
+ const today=dateOf(new Date());
+ const yesterday=addDays(today,-1);
  const start=dateOf(pr.start_date);
  const end=dateOf(pr.end_date);
+ const through=yesterday<start?addDays(start,-1):(yesterday>end?end:yesterday);
 
- // The goal average uses the number of calendar days from start through end.
- // Example: 8/15-8/19 = 5 days.
- const days=Math.max(1,diffDays(pr.start_date,pr.end_date)+1);
- const targetAvg=target/days;
+ // Number of calendar days from project start through yesterday, inclusive.
+ const elapsed=through<start?0:Math.min(totalDays,diffDays(pr.start_date,key(through))+1);
 
- // Evaluate progress at the day before the date currently being viewed.
- const viewed=dateOf(selectedDate);
- const previous=addDays(viewed,-1);
- const through=previous<start?addDays(start,-1):(previous>end?end:previous);
- const elapsed=through<start?0:Math.min(days,diffDays(pr.start_date,key(through))+1);
+ // Missing past dates are automatically stored as 0 minutes, so this is
+ // exactly the sum of all study records from start through yesterday.
  const actual=through<start?0:actualTotalAt(pr,key(through));
 
- // Target cumulative amount at the same point in time.
- const targetThrough=targetAvg*elapsed;
+ // Actual average = total actual minutes / number of elapsed calendar days.
  const actualAvg=elapsed>0?actual/elapsed:0;
+
+ // Progress compares actual cumulative time with the target cumulative time
+ // that should have been achieved by yesterday.
+ const targetThrough=targetAvg*elapsed;
  const progress=targetThrough>0?(actual/targetThrough)*100:0;
+
  return {targetAvg,actualAvg,progressDiff:progress-100};
 }
 
