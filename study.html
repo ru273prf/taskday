@@ -105,6 +105,15 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .summary span{display:block;margin-top:5px;color:#777;font-size:14px}
 @media(max-width:800px){.summary{grid-template-columns:repeat(2,1fr)}}
 </style>
+
+<style id="study-forecast-v1">
+.forecast-box{margin:12px 0 8px;padding:13px 14px;border:1px solid #e1e5e2;border-radius:14px;background:#fafcfb;display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}
+.forecast-box b{display:block;color:#7b827d;font-size:11px;font-weight:700;margin-bottom:4px}
+.forecast-box strong{display:block;font-size:17px;font-weight:800;color:#2d9147}
+.forecast-box small{grid-column:1/-1;color:#7b827d;font-size:10px;margin-top:1px}
+@media(max-width:520px){.forecast-box{grid-template-columns:1fr}.forecast-box small{grid-column:auto}}
+</style>
+
 <style id="study-recordable-v14">
 .day:not(.recordable){cursor:default}
 .day.in-range:not(.recordable){opacity:.55}

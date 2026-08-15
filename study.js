@@ -136,7 +136,14 @@ function currentMetrics(pr){
  const targetThrough=targetAvg*elapsed;
  const progress=targetThrough>0?(actual/targetThrough)*100:0;
 
- return {targetAvg,actualAvg,progressDiff:progress-100};
+ // Forecast: if the current actual average continues, how many calendar days
+ // are needed to complete the full target from the project start?
+ // We count the start date as day 1, so N required days means start + (N - 1).
+ const forecastDays=actualAvg>0?Math.max(1,Math.ceil(target/actualAvg)):null;
+ const forecastDate=forecastDays?addDays(start,forecastDays-1):null;
+ const forecastErrorDays=forecastDate?diffDays(end,forecastDate):null;
+
+ return {targetAvg,actualAvg,progressDiff:progress-100,forecastDays,forecastDate,forecastErrorDays};
 }
 
 function render(){
@@ -155,6 +162,11 @@ function render(){
    <div><b>${isMoney?metricMoneyFromMinutes(metrics.targetAvg):hmFromMinutes(metrics.targetAvg)}</b><span>目標平均</span></div>
    <div><b>${isMoney?metricMoneyFromMinutes(metrics.actualAvg):hmFromMinutes(metrics.actualAvg)}</b><span>実績平均</span></div>
    <div><b>${metrics.progressDiff>=0?"+":""}${metrics.progressDiff.toFixed(1)}%</b><span>進度差</span></div>
+  </div>
+  <div class="forecast-box">
+   <div><b>実績通りなら</b><strong>${metrics.forecastDate?fmt(metrics.forecastDate):"算出不可"}</strong></div>
+   <div><b>目標終了日との差</b><strong>${metrics.forecastErrorDays===null?"—":metrics.forecastErrorDays===0?"±0日":metrics.forecastErrorDays<0?`-${Math.abs(metrics.forecastErrorDays)}日早い`:`+${metrics.forecastErrorDays}日遅い`}</strong></div>
+   <small>目標時間 ÷ 実績平均 ${metrics.actualAvg>0?`= 約${metrics.forecastDays}日`:"（実績平均が0のため未算出）"}</small>
   </div>
   <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
   ${chart(pr,isMoney)}
