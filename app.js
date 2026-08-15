@@ -1,3 +1,20 @@
+<style>
+  .countdown-inline{
+    display:inline-block;
+    margin-left:4px;
+    padding:1px 4px;
+    border-radius:4px;
+    font-size:10px;
+    line-height:1.2;
+    vertical-align:middle;
+    background:#eef5f0;
+    color:#4f6757;
+    max-width:calc(100% - 28px);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+</style>
 (function(){
 "use strict";
 if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
