@@ -12,10 +12,21 @@ const money=m=>Math.round(m/60*1250).toLocaleString("ja-JP");
 let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date());
 
 async function init(){
- const {data}=await sb.auth.getSession(); user=data.session?.user||null;
+ const {data,error}=await sb.auth.getSession();
+ if(error){console.error(error);alert("ログイン状態の取得に失敗しました。\n"+error.message);auth();return}
+ user=data.session?.user||null;
  if(!user){auth();return}
- await load(); if(!currentId&&state.projects[0])currentId=state.projects[0].id; render();
- sb.auth.onAuthStateChange(async(_,session)=>{user=session?.user||null;if(user){await load();if(!currentId&&state.projects[0])currentId=state.projects[0].id;render()}});
+ await load();
+ if(!currentId&&state.projects[0])currentId=state.projects[0].id;
+ render();
+ sb.auth.onAuthStateChange(async(_,session)=>{
+  user=session?.user||null;
+  if(user){
+   await load();
+   if(!currentId&&state.projects[0])currentId=state.projects[0].id;
+   render();
+  }
+ });
 }
 async function load(){
  const [p,l,g]=await Promise.all([
@@ -23,8 +34,19 @@ async function load(){
   sb.from("study_logs").select("*").order("study_date",{ascending:true}),
   sb.from("study_goal_history").select("*").order("change_date",{ascending:true})
  ]);
- if(p.error||l.error||g.error){console.error(p.error||l.error||g.error);alert("勉強時間データの読み込みに失敗しました。Supabaseに勉強時間用テーブルを作成してください。");return}
- state.projects=p.data||[];state.logs=l.data||[];state.goals=g.data||[];
+ const errors=[
+  ["study_projects",p.error],
+  ["study_logs",l.error],
+  ["study_goal_history",g.error]
+ ].filter(([,e])=>e);
+ if(errors.length){
+  console.error("Study data load errors:", errors);
+  const detail=errors.map(([name,e])=>`${name}: ${e.message||e.code||"unknown error"}`).join("\n");
+  alert("勉強時間データの読み込みに失敗しました。\n\n"+detail);
+ }
+ state.projects=p.data||[];
+ state.logs=l.data||[];
+ state.goals=g.data||[];
 }
 function auth(){
  $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><p class="auth-note">TaskDayと同じアカウントで利用します。ログインすると、勉強時間データはTaskDayのタスクデータとは別テーブルに保存されます。</p><button class="primary" onclick="login()">ログイン</button></div>`;
@@ -75,19 +97,36 @@ function calendar(pr){
  return `<div class="calendar">${["日","月","火","水","木","金","土"].map(x=>`<div class="week">${x}</div>`).join("")}${days.join("")}</div>`;
 }
 window.selectDay=k=>{selectedDate=k;render();logDay(k)}
-function projects(){
+window.projects=function projects(){
  const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
  open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="close()">閉じる</button>`);
 }
 window.switchProject=id=>{currentId=id;close();render()};
-function settings(){open(`<h2>設定</h2><div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div><div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div><div class="row"><button onclick="newProject()">＋ 新規プロジェクト</button></div><div class="row"><button class="danger" onclick="deleteProject()">🗑 プロジェクト削除</button></div><button class="secondary" onclick="close()">閉じる</button>`)}
-function newProject(){open(`<h2>新規プロジェクト</h2><label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策"><label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}"><label class="label">目標終了日</label><input id="pe" class="input" type="date"><label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60"><button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
-window.createProject=async()=>{const name=$("#pn").value.trim()||"新規プロジェクト",start=$("#ps").value,end=$("#pe").value||start,h=Number($("#pg").value||0);if(end<start){alert("終了日は開始日以降にしてください");return}const {data,error}=await sb.from("study_projects").insert({user_id:user.id,name,start_date:start,end_date:end,goal_minutes:h*60}).select().single();if(error){alert(error.message);return}state.projects.push(data);currentId=data.id;close();render()}
-function goalEdit(){const pr=p();open(`<h2>目標設定・変更</h2><label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" value="${pr.end_date}"><label class="label">新しい目標勉強時間（時間）</label><input id="gg" class="input" type="number" step="5" value="${pr.goal_minutes/60}"><p class="note">変更前の目標線と過去の実績は保存され、変更時点の実績座標から新しい目標線が始まります。</p><button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
+window.settings=function settings(){open(`<h2>設定</h2><div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div><div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div><div class="row"><button onclick="newProject()">＋ 新規プロジェクト</button></div><div class="row"><button class="danger" onclick="deleteProject()">🗑 プロジェクト削除</button></div><button class="secondary" onclick="close()">閉じる</button>`)}
+window.newProject=function newProject(){open(`<h2>新規プロジェクト</h2><label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策"><label class="label">開始日</label><input id="ps" class="input" type="date" value="${key(new Date())}"><label class="label">目標終了日</label><input id="pe" class="input" type="date"><label class="label">目標勉強時間（時間）</label><input id="pg" class="input" type="number" min="0" step="5" placeholder="60"><button class="primary" onclick="createProject()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
+window.createProject=async()=>{
+ const name=$("#pn").value.trim()||"新規プロジェクト";
+ const start=$("#ps").value;
+ const end=$("#pe").value||start;
+ const h=Number($("#pg").value||0);
+ if(!start){alert("開始日を選択してください");return}
+ if(end<start){alert("終了日は開始日以降にしてください");return}
+ if(!Number.isFinite(h)||h<0){alert("目標時間を正しく入力してください");return}
+ if(!user){alert("ログイン状態を確認できません。ページを再読み込みしてください。");return}
+ const {data,error}=await sb.from("study_projects").insert({
+  user_id:user.id,name,start_date:start,end_date:end,goal_minutes:Math.round(h*60)
+ }).select().single();
+ if(error){console.error(error);alert("プロジェクトを作成できませんでした。\n\n"+error.message);return}
+ state.projects.push(data);
+ currentId=data.id;
+ close();
+ render();
+}
+window.goalEdit=function goalEdit(){const pr=p();open(`<h2>目標設定・変更</h2><label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" value="${pr.end_date}"><label class="label">新しい目標勉強時間（時間）</label><input id="gg" class="input" type="number" step="5" value="${pr.goal_minutes/60}"><p class="note">変更前の目標線と過去の実績は保存され、変更時点の実績座標から新しい目標線が始まります。</p><button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="close()">戻る</button>`)}
 window.saveGoal=async()=>{const pr=p(),end=$("#ge").value,h=Number($("#gg").value),change=selectedDate<=key(new Date())?selectedDate:key(new Date()),value=logsFor(pr).filter(x=>x.study_date<=change).reduce((a,x)=>a+x.minutes,0);const {data,error}=await sb.from("study_goal_history").insert({project_id:pr.id,user_id:user.id,change_date:change,value_at_change:value,goal_minutes:h*60,end_date:end}).select().single();if(error){alert(error.message);return}state.goals.push(data);pr.end_date=end;pr.goal_minutes=h*60;const r=await sb.from("study_projects").update({end_date:end,goal_minutes:h*60}).eq("id",pr.id).eq("user_id",user.id);if(r.error){alert(r.error.message);return}close();render()}
-function deleteProject(){const pr=p();open(`<h2>プロジェクト削除</h2><p>「${esc(pr.name)}」と、このプロジェクトの勉強記録・目標履歴を削除します。</p><button class="primary" style="background:#e24a4a" onclick="confirmDelete()">削除する</button><button class="secondary" onclick="close()">キャンセル</button>`)}
+window.deleteProject=function deleteProject(){const pr=p();open(`<h2>プロジェクト削除</h2><p>「${esc(pr.name)}」と、このプロジェクトの勉強記録・目標履歴を削除します。</p><button class="primary" style="background:#e24a4a" onclick="confirmDelete()">削除する</button><button class="secondary" onclick="close()">キャンセル</button>`)}
 window.confirmDelete=async()=>{const pr=p();const r=await sb.from("study_projects").delete().eq("id",pr.id).eq("user_id",user.id);if(r.error){alert(r.error.message);return}state.projects=state.projects.filter(x=>x.id!==pr.id);state.logs=state.logs.filter(x=>x.project_id!==pr.id);state.goals=state.goals.filter(x=>x.project_id!==pr.id);currentId=state.projects[0]?.id||null;close();render()}
-function logDay(date){const pr=p(),old=logAt(pr,date),h=Math.floor((old?.minutes||0)/60),m=(old?.minutes||0)%60;open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",Array.from({length:25},(_,i)=>i*5),h)}${wheel("mins",Array.from({length:12},(_,i)=>i*5),m)}</div><div class="note">上下にスワイプして5分刻みで選択</div><button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="close()">戻る</button>`)}
+window.logDay=function logDay(date){const pr=p(),old=logAt(pr,date),h=Math.floor((old?.minutes||0)/60),m=(old?.minutes||0)%60;open(`<h2>${fmt(date)} の勉強時間</h2><div class="wheels">${wheel("hours",Array.from({length:25},(_,i)=>i*5),h)}${wheel("mins",Array.from({length:12},(_,i)=>i*5),m)}</div><div class="note">上下にスワイプして5分刻みで選択</div><button class="primary" onclick="saveLog('${date}')">登録する</button><button class="secondary" onclick="close()">戻る</button>`)}
 function wheel(name,vals,sel){const idx=vals.indexOf(sel),safe=idx<0?0:idx;return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-index="${safe}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===safe?"selected":""}">${String(v).padStart(2,"0")}</div>`).join("")}</div></div>`}
 function wheelBind(el){
  let y=0;
@@ -109,7 +148,7 @@ function wheelBind(el){
  el.onmouseleave=()=>el.onmousemove=null;
 }
 window.saveLog=async date=>{const a=$("#hoursWheel"),b=$("#minsWheel"),hv=JSON.parse(a.dataset.values)[Number(a.dataset.index)],mv=JSON.parse(b.dataset.values)[Number(b.dataset.index)],minutes=hv*60+mv,pr=p(),old=logAt(pr,date);let r;if(old)r=await sb.from("study_logs").update({minutes}).eq("id",old.id).eq("user_id",user.id);else r=await sb.from("study_logs").insert({project_id:pr.id,user_id:user.id,study_date:date,minutes});if(r.error){alert(r.error.message);return}await load();close();render()}
-function toggleMode(){mode=mode==="hours"?"money":"hours";render()}
+window.toggleMode=function toggleMode(){mode=mode==="hours"?"money":"hours";render()}
 function open(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show");setTimeout(()=>{document.querySelectorAll(".wheel-list").forEach(w=>{w.style.transform=`translateY(${65-Number(w.dataset.index)*40}px)`;wheelBind(w)})},0)}
 function close(){$("#modal").classList.remove("show")}
 $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")close()});
