@@ -91,7 +91,7 @@ function currentMetrics(pr){
  const end=dateOf(pr.end_date);
  const through=yesterday<end?yesterday:end;
  const elapsed=Math.max(0,Math.min(days,Math.floor((through-start)/DAY)));
- const actual=cumulativeAt(key(through));
+ const actual=actualTotalAt(pr,key(through));
  const actualAvg=elapsed>0?actual/elapsed:0;
  const progress=target>0?(actual/target)*100:0;
  return {targetAvg,actualAvg,progressDiff:progress-100};
@@ -110,8 +110,8 @@ function render(){
   <div class="summary">
    <div><b>${targetValue}</b><span>目標${isMoney?"金額":"時間"}</span></div>
    <div><b>${totalValue}</b><span>これまでの合計${isMoney?"金額":"時間"}</span></div>
-   <div><b>${isMoney?metricMoneyFromMinutes(metrics.targetAvg):hmFromMinutes(metrics.targetAvg*60)}</b><span>目標平均</span></div>
-   <div><b>${isMoney?metricMoneyFromMinutes(metrics.actualAvg):hmFromMinutes(metrics.actualAvg*60)}</b><span>実績平均</span></div>
+   <div><b>${isMoney?metricMoneyFromMinutes(metrics.targetAvg):hmFromMinutes(metrics.targetAvg)}</b><span>目標平均</span></div>
+   <div><b>${isMoney?metricMoneyFromMinutes(metrics.actualAvg):hmFromMinutes(metrics.actualAvg)}</b><span>実績平均</span></div>
    <div><b>${metrics.progressDiff>=0?"+":""}${metrics.progressDiff.toFixed(1)}%</b><span>進度差</span></div>
   </div>
   <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
