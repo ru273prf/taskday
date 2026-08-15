@@ -11,7 +11,7 @@ const diffDays=(a,b)=>Math.round((dateOf(b)-dateOf(a))/86400000);
 const fmt=k=>{const d=dateOf(k);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 const minutesText=m=>`${Math.floor(m/60)}時間${String(m%60)}分`;
 const money=m=>Math.round(m/60*1250).toLocaleString("ja-JP");
-const DAY=86400000, MONTH_DAYS=30;
+const DAY=86400000;
 let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date()),calendarMonth=new Date();
 
 async function init(){
@@ -47,16 +47,6 @@ function p(){return state.projects.find(x=>x.id===currentId)||state.projects[0]}
 function logsFor(pr){return state.logs.filter(x=>x.project_id===pr.id)}
 function total(pr){return logsFor(pr).reduce((a,x)=>a+x.minutes,0)}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
-function isLong(pr){return diffDays(pr.start_date,pr.end_date)>MONTH_DAYS}
-function latestActualDate(pr){const ls=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));return ls.length?ls[ls.length-1].study_date:null}
-window.fullRange=function fullRange(){
- viewMode="full";
- const pr=p();
- if(pr){
-  viewStart=pr.start_date;
- }
- render();
-}
 function render(){
  try{
  const pr=p();
@@ -68,9 +58,10 @@ function render(){
  <div class="card">
   <div class="meta">${fmt(pr.start_date)} ～ ${fmt(pr.end_date)}</div>
   <div class="summary"><div><b>${targetValue}</b><span>目標${isMoney?"金額":"時間"}</span></div><div><b>${totalValue}</b><span>これまでの合計${isMoney?"金額":"時間"}</span></div></div>
-  <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button>${isLong(pr)?`<button onclick="toggleScale()">${viewMode(pr)==="full"?"1か月表示":"全期間"}</button>`:""}</div>
+  <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
   ${chart(pr,isMoney)}
   <div class="legend"><span><i></i>目標</span><span><i class="actual"></i>実績</span></div>
+  <button class="secondary chart-history-btn" onclick="goalHistory()">📋 このプロジェクトの目標設定履歴</button>
  </div>
  <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
  <button class="plus" onclick="logDay('${selectedDate}')">＋</button>`;
@@ -79,89 +70,79 @@ function render(){
   $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><div class="warning">画面の表示中にエラーが発生しました。ページを再読み込みしてください。<br><small>${esc(err?.message||err)}</small></div></div>`;
  }
 }
-let scaleMode="auto";
-function viewMode(pr){return isLong(pr)?scaleMode:"full"}
-window.toggleScale=function toggleScale(){scaleMode=scaleMode==="full"?"auto":"full";render()}
-function chart(pr,moneyMode){
- const W=700,H=310,L=60,R=18,T=18,B=48;
- const startDate=dateOf(pr.start_date), endDate=dateOf(pr.end_date);
- let viewStart,viewEnd;
- if(isLong(pr)&&scaleMode!=="full"){
-  const latest=latestActualDate(pr);
-  const anchor=latest?dateOf(latest):startDate;
-  viewStart=addDays(anchor,-29);
-  viewEnd=addDays(viewStart,30);
-  if(viewEnd>endDate){viewEnd=endDate;viewStart=addDays(viewEnd,-30)}
-  // For a long project, the one-month window may begin before the project starts.
-  // Keep the window anchored to actual progress when possible.
- }else{
-  // Always show one day before the project start so the target line visibly begins at (start, 0).
-  viewStart=addDays(startDate,-1);
-  viewEnd=endDate;
+function actualTotalAt(pr,date){
+ const start=pr.start_date;
+ return logsFor(pr).filter(x=>x.study_date>=start&&x.study_date<=date).reduce((a,x)=>a+x.minutes,0);
+}
+function formatAxis(v,moneyMode){
+ if(moneyMode){
+  if(v>=100000000)return `${(v/100000000).toFixed(v%100000000?1:0)}億`;
+  if(v>=10000)return `${(v/10000).toFixed(v%10000?1:0)}万`;
+  return `${Math.round(v)}円`;
  }
- if(viewEnd<=viewStart)viewEnd=addDays(viewStart,1);
+ return `${Math.round(v)}h`;
+}
+function chart(pr,moneyMode){
+ const W=700,H=310,L=62,R=18,T=18,B=48;
+ const startDate=dateOf(pr.start_date),endDate=dateOf(pr.end_date);
+ const viewStart=addDays(startDate,-1),viewEnd=endDate;
  const days=Math.max(1,Math.round((viewEnd-viewStart)/DAY));
- const actuals=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));
- const cumulativeAt=d=>actuals.filter(x=>x.study_date<=key(d)).reduce((a,x)=>a+x.minutes,0);
- const baseline=0;
- const relativeActual=d=>cumulativeAt(d);
- const x=d=>L+Math.max(0,Math.min(days,(d-viewStart)/DAY))/days*(W-L-R);
+ const actuals=logsFor(pr).filter(x=>x.study_date>=pr.start_date&&x.study_date<=pr.end_date).sort((a,b)=>a.study_date.localeCompare(b.study_date));
  const history=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>a.change_date.localeCompare(b.change_date));
- const points=[{start:pr.start_date,end:pr.end_date,startVal:0,endVal:pr.goal_minutes}];
- history.forEach(g=>{
-  const prev=points[points.length-1];
-  prev.end=g.change_date;
-  prev.endVal=g.value_at_change;
-  points.push({start:g.change_date,end:g.end_date,startVal:g.value_at_change,endVal:g.goal_minutes});
- });
- const toValue=v=>moneyMode?v/60*1250:v;
- let goalVals=[];
- points.forEach(seg=>{
-  const a=dateOf(seg.start),b=dateOf(seg.end);
-  if(b<viewStart||a>viewEnd)return;
-  goalVals.push(toValue(seg.startVal)-baseline,toValue(seg.endVal)-baseline);
- });
- const actualVals=actuals.filter(l=>dateOf(l.study_date)>=viewStart&&dateOf(l.study_date)<=viewEnd).map(l=>toValue(relativeActual(dateOf(l.study_date))));
+ const actualAt=d=>actualTotalAt(pr,key(d));
+ const x=d=>L+Math.max(0,Math.min(days,(d-viewStart)/DAY))/days*(W-L-R);
+ const toValue=v=>moneyMode?v/60*1250:v/60;
+ // Goal segments: the graph always starts at (day before start, 0).
+ // Before a change, the previous slope is preserved. From a change date onward,
+ // the new line starts at the actual cumulative study time on that date.
+ const segments=[];
+ let segStart=viewStart,segStartVal=0;
+ if(history.length){
+  const first=history[0];
+  segments.push({start:segStart,startVal:0,end:dateOf(first.change_date),endVal:first.value_at_change});
+  for(let i=0;i<history.length;i++){
+   const g=history[i],next=history[i+1];
+   const end=next?dateOf(next.change_date):endDate;
+   segments.push({start:dateOf(g.change_date),startVal:actualAt(g.change_date),end,endVal:g.goal_minutes});
+  }
+ }else{
+  segments.push({start:viewStart,startVal:0,end:endDate,endVal:pr.goal_minutes});
+ }
+ const goalVals=segments.flatMap(seg=>[toValue(seg.startVal),toValue(seg.endVal)]);
+ const actualVals=actuals.map(l=>toValue(actualAt(l.study_date)));
  const maxVal=Math.max(1,...goalVals,...actualVals,0);
  const y=v=>H-B-Math.max(0,v)/maxVal*(H-T-B);
  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}">`;
  for(let i=0;i<=4;i++){
-  const v=maxVal*i/4,yy=y(v);
-  s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${moneyMode?Math.round(v).toLocaleString():Math.round(v)}</text>`;
+  const v=maxVal*i/4,yy=y(toValue(v));
+  s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#e8ece9"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#89908a">${formatAxis(v,moneyMode)}</text>`;
  }
  [0,Math.round(days/2),days].forEach(n=>{const d=addDays(viewStart,n);s+=`<text x="${x(d)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#89908a">${d.getMonth()+1}/${d.getDate()}</text>`});
- points.forEach(seg=>{
-  const a=dateOf(seg.start),b=dateOf(seg.end);
+ segments.forEach(seg=>{
+  const a=seg.start,b=seg.end;
   if(b<viewStart||a>viewEnd)return;
-  const av=toValue(seg.startVal)-baseline,bv=toValue(seg.endVal)-baseline;
   const aa=a<viewStart?viewStart:a,bb=b>viewEnd?viewEnd:b;
   const span=Math.max(1,(b-a)/DAY);
+  const av=toValue(seg.startVal),bv=toValue(seg.endVal);
   const valueAt=d=>av+(bv-av)*((d-a)/DAY)/span;
   s+=`<line x1="${x(aa)}" y1="${y(valueAt(aa))}" x2="${x(bb)}" y2="${y(valueAt(bb))}" stroke="#555" stroke-width="2" stroke-dasharray="5 6"/>`;
  });
- // Mark every goal-change date explicitly on the graph.
- history.forEach(g=>{
-  const d=dateOf(g.change_date);
-  if(d<viewStart||d>viewEnd)return;
-  s+=`<line x1="${x(d)}" x2="${x(d)}" y1="${T}" y2="${H-B}" stroke="#888" stroke-width="1" stroke-dasharray="2 4"/>`;
-  s+=`<text x="${x(d)+4}" y="${T+12}" font-size="9" fill="#666">目標変更 ${d.getMonth()+1}/${d.getDate()}</text>`;
- });
- let cum=0,pts=[];
+ // Actual line always starts at the origin on the day before the project starts.
+ const pts=[`${x(viewStart)},${y(0)}`];
+ let seen=false;
  actuals.forEach(l=>{
-  cum+=l.minutes;
   const d=dateOf(l.study_date);
-  if(d>=viewStart&&d<=viewEnd){const v=toValue(cum-baseline);pts.push(`${x(d)},${y(v)}`)}
+  if(d>=viewStart&&d<=viewEnd){
+   pts.push(`${x(d)},${y(toValue(actualAt(l.study_date)))}`);seen=true;
+  }
  });
- // When the window starts on a date with an existing cumulative result, anchor the actual line at the left edge.
- if(isLong(pr)&&scaleMode!=="full"&&actuals.length&&actuals.some(l=>dateOf(l.study_date)<=viewStart)){
-  pts.unshift(`${x(viewStart)},${y(toValue(cumulativeAt(viewStart)))}`);
- }
- if(pts.length){
+ if(seen){
   s+=`<polyline points="${pts.join(" ")}" fill="none" stroke="#42ad5b" stroke-width="4"/>`;
   pts.forEach(q=>{const [cx,cy]=q.split(",");s+=`<circle cx="${cx}" cy="${cy}" r="4" fill="#42ad5b"/>`});
+ }else{
+  s+=`<circle cx="${x(viewStart)}" cy="${y(0)}" r="4" fill="#42ad5b"/>`;
  }
  s+="</svg>";
- if(isLong(pr)&&scaleMode!=="full")s+=`<div class="chart-note">直近1か月を表示中（全期間を見るには「全期間」を押してください）</div>`;
  return s;
 }
 
@@ -233,69 +214,105 @@ window.projects=function projects(){
 }
 window.switchProject=id=>{currentId=id;const pr=p();calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);close();render()};
 
+function goalTargetAt(pr,date){
+ const target=dateOf(date),hist=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>a.change_date.localeCompare(b.change_date));
+ if(hist.length===0){
+  const a=dateOf(pr.start_date),b=dateOf(pr.end_date),span=Math.max(1,(b-a)/DAY);
+  return pr.goal_minutes*Math.max(0,Math.min(1,(target-a)/DAY/span));
+ }
+ const first=hist[0],firstDate=dateOf(first.change_date);
+ if(target<=firstDate){
+  const a=dateOf(pr.start_date),span=Math.max(1,(firstDate-a)/DAY);
+  return first.value_at_change*Math.max(0,Math.min(1,(target-a)/DAY/span));
+ }
+ for(let i=0;i<hist.length;i++){
+  const g=hist[i],a=dateOf(g.change_date),next=hist[i+1],b=next?dateOf(next.change_date):dateOf(g.end_date);
+  const av=actualTotalAt(pr,g.change_date),bv=g.goal_minutes,span=Math.max(1,(b-a)/DAY);
+  if(target<=b){return av+(bv-av)*Math.max(0,Math.min(1,(target-a)/DAY/span));}
+ }
+ return hist[hist.length-1].goal_minutes;
+}
+function goalHistoryItems(pr){
+ const rows=state.goals.filter(g=>g.project_id===pr.id).sort((a,b)=>String(b.change_date).localeCompare(String(a.change_date))).slice(0,5);
+ if(!rows.length)return `<div class="note">このプロジェクトの目標設定変更履歴はありません。</div>`;
+ return rows.map(g=>{
+  const span=Math.max(1,diffDays(g.change_date,g.end_date));
+  const actual=actualTotalAt(pr,g.change_date);
+  const daily=Math.max(0,(g.goal_minutes-actual)/span);
+  return `<div class="history-row"><div class="history-main"><b>${fmt(g.change_date)}から</b><span>終了：${fmt(g.end_date)}</span><span>目標：${minutesText(g.goal_minutes)}</span><span>1日：約${(daily/60).toFixed(2)}時間</span></div><button class="secondary small" onclick="editGoalHistory('${g.id}')">変更</button></div>`;
+ }).join("");
+}
 window.goalHistory=function goalHistory(){
- const pr=p();
- if(!pr)return;
- const rows=(state.goals||[])
-   .filter(g=>g.project_id===pr.id)
-   .sort((a,b)=>String(b.change_date).localeCompare(String(a.change_date)))
-   .slice(0,5);
- const items=rows.length ? rows.map(g=>`
-  <div class="history-row">
-   <div class="history-main">
-    <b>${fmt(g.change_date)}</b>
-    <span>${minutesText(g.goal_minutes)} / ${fmt(g.end_date)}まで</span>
-   </div>
-   <button class="secondary small" onclick="editGoalHistory('${g.id}')">変更</button>
-  </div>`).join("") :
-  `<div class="note">目標変更履歴はありません。</div>`;
- open(`<h2>目標設定・変更履歴</h2>
-   <p class="note">最新5件を表示しています。</p>
-   <div class="history-list">${items}</div>
-   <button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
+ const pr=p();if(!pr)return;
+ open(`<h2>「${esc(pr.name)}」の目標設定履歴</h2><p class="note">最新5件を表示しています。</p><div class="history-list">${goalHistoryItems(pr)}</div><button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
 window.editGoalHistory=function editGoalHistory(id){
- const g=state.goals.find(x=>x.id===id);
- if(!g)return;
+ const g=state.goals.find(x=>x.id===id);if(!g)return;
  open(`<h2>目標設定を変更</h2>
+  <label class="label">設定方法</label>
+  <select id="ghmode" class="input" onchange="toggleGoalMode('gh')"><option value="total">新しい目標時間</option><option value="daily">1日の勉強時間</option></select>
   <label class="label">新しい目標開始日</label><input id="ghs" class="input" type="date" value="${g.change_date}">
   <label class="label">新しい目標終了日</label><input id="ghe" class="input" type="date" value="${g.end_date}">
-  <label class="label">新しい目標勉強時間（時間）</label><input id="ghm" class="input" type="number" min="0" step="5" value="${g.goal_minutes/60}">
-  <button class="primary" onclick="saveGoalHistoryEdit('${g.id}')">保存</button>
-  <button class="secondary" onclick="goalHistory()">戻る</button>`);
+  <label class="label" id="ghvalueLabel">新しい勉強時間（時間）</label><input id="ghvalue" class="input" type="number" min="0" step="0.25" value="${g.goal_minutes/60}">
+  <p class="note">新しい開始日までは以前の目標の傾きを維持します。新しい開始日からは、その日の実績を起点に新しい目標を設定します。</p>
+  <button class="primary" onclick="saveGoalHistoryEdit('${g.id}')">保存</button><button class="secondary" onclick="goalHistory()">戻る</button>`);
+}
+window.toggleGoalMode=function(prefix){
+ const modeEl=$(`#${prefix}mode`),label=$(`#${prefix}valueLabel`),input=$(`#${prefix}value`);if(!modeEl||!label||!input)return;
+ if(modeEl.value==='daily'){label.textContent='1日の勉強時間（時間）';input.step='0.25';}
+ else{label.textContent='新しい目標時間（時間）';input.step='0.25';}
 }
 window.saveGoalHistoryEdit=async function(id){
- const g=state.goals.find(x=>x.id===id);
- if(!g)return;
- const start=$("#ghs").value,end=$("#ghe").value,h=Number($("#ghm").value);
- if(!start||!end||end<=start||!Number.isFinite(h)||h<0){alert("入力内容を確認してください。");return}
- const valueAt=goalLineAt(p(),start);
- const {data,error}=await sb.from("study_goal_history").update({
-   change_date:start,end_date:end,goal_minutes:Math.round(h*60),value_at_change:Math.round(valueAt)
- }).eq("id",id).select().single();
- if(error){alert("履歴を変更できませんでした。\n\n"+error.message);return}
- const i=state.goals.findIndex(x=>x.id===id);
- if(i>=0)state.goals[i]=data;
- const pr=p();
- // Keep the project's current endpoint synchronized when editing its latest history row.
+ const g=state.goals.find(x=>x.id===id);if(!g)return;
+ const start=$('#ghs').value,end=$('#ghe').value,h=Number($('#ghvalue').value),type=$('#ghmode').value,pr=p();
+ if(!start||!end||end<=start||start<pr.start_date||!Number.isFinite(h)||h<0){alert('入力内容を確認してください。');return}
+ const actual=actualTotalAt(pr,start),days=Math.max(1,diffDays(start,end));
+ const endpoint=type==='daily'?Math.round(actual+h*60*days):Math.round(h*60);
+ const oldTarget=goalTargetAt(pr,start);
+ const {data,error}=await sb.from('study_goal_history').update({change_date:start,end_date:end,goal_minutes:endpoint,value_at_change:Math.round(oldTarget)}).eq('id',id).select().single();
+ if(error){alert('履歴を変更できませんでした。\n\n'+error.message);return}
+ const i=state.goals.findIndex(x=>x.id===id);if(i>=0)state.goals[i]=data;
  const latest=state.goals.filter(x=>x.project_id===pr.id).sort((a,b)=>String(b.change_date).localeCompare(String(a.change_date)))[0];
  if(latest&&latest.id===id){
-  const r=await sb.from("study_projects").update({end_date:end,goal_minutes:Math.round(h*60)}).eq("id",pr.id).eq("user_id",user.id);
+  const r=await sb.from('study_projects').update({end_date:end,goal_minutes:endpoint}).eq('id',pr.id).eq('user_id',user.id);
   if(r.error){alert(r.error.message);return}
-  pr.end_date=end;pr.goal_minutes=Math.round(h*60);
+  pr.end_date=end;pr.goal_minutes=endpoint;
  }
- closeStudyModal();
- render();
+ closeStudyModal();render();
 }
-
 window.settings=function settings(){
  open(`<h2>設定</h2>
  <div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div>
  <div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div>
- <div class="row"><button onclick="goalHistory()">📋 目標設定・変更履歴</button></div>
  <div class="row"><button class="danger" style="background:none!important;color:#d84a4a!important" onclick="deleteProjectList()">🗑 プロジェクト削除</button></div>
  <button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
+window.goalEdit=function goalEdit(){
+ const pr=p();
+ open(`<h2>目標設定・変更</h2>
+  <label class="label">設定方法</label>
+  <select id="gmode" class="input" onchange="toggleGoalMode('g')"><option value="total">新しい目標時間</option><option value="daily">1日の勉強時間</option></select>
+  <label class="label">新しい目標開始日</label><input id="gs" class="input" type="date" min="${pr.start_date}" value="${selectedDate>=pr.start_date&&selectedDate<=pr.end_date?selectedDate:pr.start_date}">
+  <label class="label">新しい目標終了日</label><input id="ge" class="input" type="date" min="${pr.start_date}" value="${pr.end_date}">
+  <label class="label" id="gvalueLabel">新しい目標時間（時間）</label><input id="gvalue" class="input" type="number" min="0" step="0.25" value="${pr.goal_minutes/60}">
+  <p class="note">新しい開始日までは、それまでの目標の傾きをそのまま維持します。新しい開始日以降は、その日の実績を起点に新しい目標を引きます。</p>
+  <button class="primary" onclick="saveGoal()">保存</button><button class="secondary" onclick="closeStudyModal()">戻る</button>`);
+}
+window.saveGoal=async()=>{
+ const pr=p(),start=$('#gs').value,end=$('#ge').value,h=Number($('#gvalue').value),type=$('#gmode').value;
+ if(!start||!end||end<=start||start<pr.start_date||!Number.isFinite(h)||h<0){alert('新しい目標の期間・時間を確認してください。');return}
+ const actual=actualTotalAt(pr,start),days=Math.max(1,diffDays(start,end));
+ const endpoint=type==='daily'?Math.round(actual+h*60*days):Math.round(h*60);
+ const oldTarget=goalTargetAt(pr,start);
+ const {data,error}=await sb.from('study_goal_history').insert({project_id:pr.id,user_id:user.id,change_date:start,value_at_change:Math.round(oldTarget),goal_minutes:endpoint,end_date:end}).select().single();
+ if(error){alert('目標を変更できませんでした。\n\n'+error.message);return}
+ state.goals.push(data);
+ pr.end_date=end;pr.goal_minutes=endpoint;
+ const r=await sb.from('study_projects').update({end_date:end,goal_minutes:endpoint}).eq('id',pr.id).eq('user_id',user.id);
+ if(r.error){alert(r.message||r.error.message);return}
+ closeStudyModal();render();
+}
+
 window.newProject=function newProject(){
  open(`<h2>新規プロジェクト</h2>
  <label class="label">プロジェクト名</label><input id="pn" class="input" placeholder="例：TOEFL対策">
