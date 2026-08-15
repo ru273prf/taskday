@@ -50,6 +50,7 @@ function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
 function isLong(pr){return diffDays(pr.start_date,pr.end_date)>MONTH_DAYS}
 function latestActualDate(pr){const ls=logsFor(pr).sort((a,b)=>a.study_date.localeCompare(b.study_date));return ls.length?ls[ls.length-1].study_date:null}
 function render(){
+ try{
  const pr=p();
  if(!pr){$("#app").innerHTML=`<div class="card empty">プロジェクトがありません。<button class="primary" onclick="projects()">＋ プロジェクトを作成</button></div>`;return}
  const t=total(pr),isMoney=mode==="money";
@@ -65,6 +66,10 @@ function render(){
  </div>
  <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
  <button class="plus" onclick="logDay('${selectedDate}')">＋</button>`;
+ }catch(err){
+  console.error("Study render error:",err);
+  $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><div class="warning">画面の表示中にエラーが発生しました。ページを再読み込みしてください。<br><small>${esc(err?.message||err)}</small></div></div>`;
+ }
 }
 let scaleMode="auto";
 function viewMode(pr){return isLong(pr)?scaleMode:"full"}
@@ -73,8 +78,11 @@ function chart(pr,moneyMode){
  const W=700,H=310,L=60,R=18,T=18,B=48;
  let viewStart=dateOf(pr.start_date),viewEnd=dateOf(pr.end_date);
  if(isLong(pr)&&scaleMode!=="full"){
-  const latest=latestActualDate(pr)||key(new Date());
-  const latestD=dateOf(Math.max(pr.start_date,Math.min(pr.end_date,latest)));
+  const latest=latestActualDate(pr);
+  let latestD=latest?dateOf(latest):dateOf(pr.start_date);
+  const startD=dateOf(pr.start_date), endD=dateOf(pr.end_date);
+  if(latestD<startD) latestD=startD;
+  if(latestD>endD) latestD=endD;
   viewStart=addDays(latestD,-MONTH_DAYS);
   if(viewStart<dateOf(pr.start_date))viewStart=dateOf(pr.start_date);
   viewEnd=addDays(viewStart,MONTH_DAYS);
