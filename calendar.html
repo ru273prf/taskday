@@ -24,6 +24,95 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);bord
 .calendar{padding:14px}.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.calhead button{font-size:23px;padding:5px 12px}.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.week div{text-align:center;color:#777;font-size:12px;padding:4px}
 .day{height:43px;border-radius:10px;display:grid;place-items:center;position:relative;touch-action:manipulation}.day.other{color:#bbb}.day.sel{background:#111827;color:#fff}.dot{position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor}
 </style>
+
+<style id="taskday-uiux-v2-theme">
+:root{
+  --td-bg:#f7f8f7;
+  --td-surface:#ffffff;
+  --td-text:#171a18;
+  --td-muted:#737a75;
+  --td-border:#e3e7e4;
+  --td-accent:#42ad5b;
+  --td-accent-soft:#edf7ef;
+  --td-danger:#d64545;
+  --td-blue:#3978c9;
+  --td-radius:14px;
+  --td-shadow:0 2px 12px rgba(23,26,24,.05);
+}
+html{background:var(--td-bg);-webkit-text-size-adjust:100%}
+body{
+  background:var(--td-bg)!important;
+  color:var(--td-text)!important;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+}
+button,a,input,select,textarea{font:inherit}
+button,a{ -webkit-tap-highlight-color:transparent; }
+button{touch-action:manipulation}
+.card,.sheet,.project-item,.modal .sheet{
+  box-shadow:var(--td-shadow);
+}
+.card{
+  border-color:var(--td-border)!important;
+  border-radius:var(--td-radius)!important;
+}
+input,select,textarea{
+  border-color:var(--td-border)!important;
+  border-radius:12px!important;
+}
+.primary{
+  background:var(--td-accent)!important;
+  border-color:var(--td-accent)!important;
+}
+.secondary{
+  background:#fff!important;
+  color:var(--td-text)!important;
+  border-color:var(--td-border)!important;
+}
+nav#bottomNav, body > nav{
+  background:rgba(255,255,255,.96)!important;
+  border-top:1px solid var(--td-border)!important;
+  padding-bottom:calc(9px + env(safe-area-inset-bottom))!important;
+  backdrop-filter:saturate(140%) blur(10px);
+  -webkit-backdrop-filter:saturate(140%) blur(10px);
+}
+nav#bottomNav a, body > nav a{
+  color:var(--td-muted)!important;
+  background:transparent!important;
+  font-weight:600!important;
+  border-radius:12px!important;
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .15s ease,color .15s ease,transform .08s ease;
+}
+nav#bottomNav a.active, body > nav a.active{
+  background:var(--td-accent-soft)!important;
+  color:var(--td-accent)!important;
+  font-weight:700!important;
+}
+nav#bottomNav a:active, body > nav a:active{transform:scale(.97)}
+.day.selected,.day.sel{
+  background:var(--td-accent)!important;
+  border-color:var(--td-accent)!important;
+  color:#fff!important;
+}
+.danger{color:var(--td-danger)!important}
+@media (hover:hover){
+  nav#bottomNav a:hover, body > nav a:hover{
+    background:#f1f3f1!important;
+  }
+}
+@media(max-width:700px){
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))!important}
+  .card{margin-bottom:10px}
+  button,.primary,.secondary{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+</style>
+
 </head>
 <body>
 <div id="app" class="app"></div>
