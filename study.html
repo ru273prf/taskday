@@ -119,9 +119,26 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 .day.in-range:not(.recordable){opacity:.55}
 </style>
 
-<style id="study-type-wheel-v1">
-.type-wheel-wrap{margin:6px 0 2px}.type-wheel-wrap .wheel{width:120px;height:168px}.type-wheel-wrap .wheel-list{position:absolute}
+
+
+<style id="study-v309-ui">
+/* Keep summary values such as 12時間42分 on one line. */
+.summary>div{min-width:0;flex:1}
+.summary b{font-size:clamp(15px,2.5vw,22px);white-space:nowrap;letter-spacing:-.03em}
+@media(max-width:700px){.summary{gap:10px}.summary b{font-size:15px}.summary span{font-size:10px}}
+/* Achievement button sits between project selector and settings. */
+.achievement-btn{border:1px solid #b9dfc1;background:#edf8ef;color:#2d9147;border-radius:11px;padding:8px 10px;font-weight:800;font-size:12px;white-space:nowrap}
+/* Long-press deletion affordance. */
+.delete-hold{touch-action:none;user-select:none;-webkit-user-select:none}
+/* Horizontal project-type picker. */
+.type-wheel-wrap{display:flex;justify-content:center;overflow:hidden;margin:10px 0 4px}
+.type-wheel-wrap .wheel.horizontal-wheel{width:300px;height:76px;border-radius:14px}
+.horizontal-wheel::before{left:108px;right:auto;top:0;width:54px;height:74px;border-left:1px solid rgba(70,180,100,.35);border-right:1px solid rgba(70,180,100,.35);border-top:0;border-bottom:0}
+.horizontal-wheel .wheel-list{top:0;left:0;right:auto;height:76px;display:flex;align-items:center;gap:0}
+.horizontal-wheel .wheel-item{width:54px;min-width:54px;height:76px;line-height:76px}
+.horizontal-wheel .wheel-item.selected{font-weight:900;color:#111}
 </style>
+
 </head>
 <body>
 <div id="app" class="app"></div>
@@ -132,6 +149,6 @@ nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
 </nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./study.js?v=16"></script>
+<script src="./study.js?v=17"></script>
 </body>
 </html>
