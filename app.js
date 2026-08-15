@@ -3,12 +3,18 @@
 if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
 if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}
 const $=s=>document.querySelector(s);
+const injectedStyle=document.createElement("style");
+injectedStyle.textContent=`
+.day-detail{padding:2px 0}.day-detail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.day-detail-head h2{margin:0;font-size:24px}.day-detail-close{width:42px;height:42px;border:0;border-radius:50%;background:#f1f3f5;color:#666;font-size:32px;line-height:1;cursor:pointer}.day-detail-list{display:flex;flex-direction:column;gap:8px}.day-detail-task{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf0f4}.day-detail-task-main{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:2px 0;cursor:pointer}.day-detail-task-title{display:block;font-size:17px;font-weight:700;overflow-wrap:anywhere}.day-detail-task-date{display:block;margin-top:3px;font-size:12px;color:#8a94a6}.day-detail-plus{display:block;margin:18px auto 2px;width:58px;height:58px;border:0;border-radius:50%;background:#111;color:#fff;font-size:32px;line-height:1;cursor:pointer}
+@media(max-width:600px){.grid{grid-template-columns:repeat(7,minmax(0,1fr)) !important}.day{min-width:0 !important;min-height:82px !important;padding:5px 3px !important;overflow:hidden}.day-number{font-size:15px !important}.cal-labels{display:block !important;margin-top:3px !important}.cal-label{display:block !important;font-size:11px !important;line-height:1.2 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;margin:2px 0 !important;padding:2px 3px !important;border-radius:3px !important}}`;
+document.head.appendChild(injectedStyle);
+
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
 const fromKey=k=>{if(k instanceof Date)return new Date(k);const [y,m,d]=String(k).split("-").map(Number);return new Date(y,m-1,d)};
 const mondayKey=d=>{const x=new Date(d);const n=x.getDay();x.setDate(x.getDate()-(n===0?6:n-1));return key(x)};
 const daysLeft=d=>{const a=new Date();a.setHours(0,0,0,0);return Math.round((fromKey(d)-a)/86400000)};
-const fmt=d=>fromKey(d).toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric"});
+const fmt=d=>{const x=fromKey(d);return x.getFullYear()+"/"+(x.getMonth()+1)+"/"+x.getDate()};
 const rem=d=>{const n=daysLeft(d);return n>0?"あと"+n+"日":n===0?"今日":Math.abs(n)+"日経過"};
 // ===== Supabase cloud sync =====
 const SUPABASE_URL="https://uiyksvrxcfowdkmnsdeu.supabase.co";
@@ -110,7 +116,7 @@ async function loadSupabase(){
       s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
     });
   }
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 }
 
 function authUI(){
@@ -141,13 +147,7 @@ function authUI(){
   };
   w.querySelector("#auth-signup").onclick=async()=>{
     msg.textContent="登録中…";
-    const {data,error}=await sb.auth.signUp({
-  email: email.value.trim(),
-  password: pass.value,
-  options: {
-    emailRedirectTo: 'https://ru273prf.github.io/taskday/'
-  }
-});
+    const {data,error}=await sb.auth.signUp({email:email.value.trim(),password:pass.value,options:{emailRedirectTo:"https://ru273prf.github.io/taskday/"}});
     if(error)msg.textContent=error.message;
     else msg.textContent=data.session?"登録しました":"確認メールを確認してください。";
   };
@@ -294,31 +294,20 @@ function eventActions(id){
  $("#delete").onclick=()=>{state.events=state.events.filter(x=>x.id!==id);save();closeModal();render()};
 }
 function dateAddChoice(date){
- $("#sheet").innerHTML='<h2>'+fmt(date)+'に追加</h2><div class="actions" style="flex-direction:column"><button class="primary" id="addTask">短期タスクとして追加</button><button class="secondary" id="addEvent">予定として追加</button><button class="secondary" id="cancel">キャンセル</button></div>';
- showModal();
- $("#addTask").onclick=()=>{closeModal();openTask("short",date)};
- $("#addEvent").onclick=()=>{closeModal();openEvent(key(date))};
- $("#cancel").onclick=closeModal;
+  dayActions(date);
 }
+
 function dayActions(date){
- const k=key(date);
- const items=[
-   ...state.tasks.filter(t=>t.type==="short"&&t.date===k).map(t=>({id:t.id,title:t.title,kind:"task"})),
-   ...state.events.filter(e=>e.date===k).map(e=>({id:e.id,title:e.title,kind:"event"})),
-   ...state.countdowns.filter(c=>c.date===k).map(c=>({id:c.id,title:c.title,kind:"countdown"}))
- ];
- const list=items.length?items.map(x=>{
-   const fn=x.kind==="task"?"taskActions":x.kind==="event"?"eventActions":"countActions";
-   const label=x.kind==="task"?"短期タスク":x.kind==="event"?"予定":"あと何日";
-   return '<button class="day-action" data-kind="'+x.kind+'" data-id="'+x.id+'"><span>'+esc(x.title)+'</span><small>'+label+' ・ 編集/削除</small></button>';
- }).join(""):'<div class="empty">この日のラベルはありません</div>';
- $("#sheet").innerHTML='<h2>'+fmt(date)+'</h2><div class="day-action-list">'+list+'</div><div class="actions"><button class="secondary" id="cancel">閉じる</button></div>';
- showModal();
- $("#cancel").onclick=closeModal;
- document.querySelectorAll(".day-action").forEach(b=>longPress(b,()=>{
-   const fn=b.dataset.kind==="task"?taskActions:b.dataset.kind==="event"?eventActions:countActions;
-   closeModal();fn(b.dataset.id);
- }));
+  const k=key(date);
+  const short=state.tasks.filter(t=>t.type==="short"&&t.date===k);
+  const list=short.length
+    ? short.map(t=>`<div class="day-detail-task"><button class="check day-detail-check" data-complete="${t.id}"></button><button class="day-detail-task-main" data-edit="${t.id}"><span class="day-detail-task-title">${esc(t.title)}</span><span class="day-detail-task-date">${fmt(t.date)}</span></button></div>`).join("")
+    : '<div class="empty">この日の短期タスクはありません</div>';
+  $("#sheet").innerHTML=`<div class="day-detail"><div class="day-detail-head"><h2>${fmt(date)}</h2><button class="day-detail-close" id="dayDetailClose" aria-label="閉じる">×</button></div><div class="day-detail-list">${list}</div><button class="day-detail-plus" id="dayDetailPlus" aria-label="短期タスクを追加">＋</button></div>`;
+  showModal();
+  $("#dayDetailClose").onclick=closeModal;
+  $("#dayDetailPlus").onclick=()=>{closeModal();openTask("short",date)};
+  bind();
 }
 
 function showModal(){
@@ -432,7 +421,7 @@ function renderCalendar(){
      if(longed){e.preventDefault();e.stopPropagation();longed=false;return;}
      selectedDate=fromKey(k);
      calDate=new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1);
-     dateAddChoice(selectedDate);
+     dayActions(selectedDate);
    });
  });
 
