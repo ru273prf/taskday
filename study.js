@@ -128,26 +128,25 @@ function currentMetrics(pr){
  // Goal average = final target / inclusive project days.
  const targetAvg=target/totalDays;
 
- // Metrics are based on TODAY, and therefore use the records through
- // yesterday. Example: today 8/15 -> evaluate 8/12, 8/13, 8/14.
+ // Metrics are based on TODAY, using records from the project start
+ // through today. Today's study time is therefore included.
  const today=dateOf(new Date());
- const yesterday=addDays(today,-1);
  const start=dateOf(pr.start_date);
  const end=dateOf(pr.end_date);
- const through=yesterday<start?addDays(start,-1):(yesterday>end?end:yesterday);
+ const through=today<start?addDays(start,-1):(today>end?end:today);
 
- // Number of calendar days from project start through yesterday, inclusive.
+ // Number of calendar days from project start through today, inclusive.
  const elapsed=through<start?0:Math.min(totalDays,diffDays(pr.start_date,key(through))+1);
 
- // Missing past dates are automatically stored as 0 minutes, so this is
- // exactly the sum of all study records from start through yesterday.
+ // Missing dates are treated as 0 minutes, so this is the sum of all
+ // study records from start through today.
  const actual=through<start?0:actualTotalAt(pr,key(through));
 
  // Actual average = total actual minutes / number of elapsed calendar days.
  const actualAvg=elapsed>0?actual/elapsed:0;
 
  // Progress compares actual cumulative time with the target cumulative time
- // that should have been achieved by yesterday.
+ // that should have been achieved by today.
  const targetThrough=targetAvg*elapsed;
  const progress=targetThrough>0?(actual/targetThrough)*100:0;
 
