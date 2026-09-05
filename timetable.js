@@ -80,7 +80,8 @@ function render(){
  if(memo){
   memo.value=timetableMemo;
   autoSizeMemo();
-  memo.oninput=()=>{timetableMemo=memo.value;autoSizeMemo();saveCloud();};
+  setupMemoKeyboard();
+  memo.oninput=()=>{timetableMemo=memo.value;autoSizeMemo();saveCloud();requestAnimationFrame(()=>requestAnimationFrame(keepMemoCaretCentered));};
  }
 }
 function autoSizeMemo(){
@@ -88,6 +89,50 @@ function autoSizeMemo(){
  if(!memo)return;
  memo.style.height="auto";
  memo.style.height=Math.max(120,memo.scrollHeight)+"px";
+}
+
+// iPhoneのキーボード表示中も、入力している行が見える位置に保つ
+function keepMemoCaretCentered(){
+ const memo=$("#timetableMemo");
+ if(!memo || document.activeElement!==memo)return;
+ const vv=window.visualViewport;
+ const viewportH=vv?vv.height:window.innerHeight;
+ const navH=68;
+ const targetY=(viewportH-navH)/2;
+ const pos=memo.selectionStart||0;
+ const before=memo.value.slice(0,pos);
+ const mirror=document.createElement("div");
+ const cs=getComputedStyle(memo);
+ mirror.style.cssText=`position:absolute;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;box-sizing:border-box;width:${memo.clientWidth}px;padding:${cs.padding};border:${cs.border};font:${cs.font};font-size:${cs.fontSize};font-family:${cs.fontFamily};font-weight:${cs.fontWeight};line-height:${cs.lineHeight};letter-spacing:${cs.letterSpacing};`;
+ mirror.textContent=before||" ";
+ document.body.appendChild(mirror);
+ const lineY=mirror.offsetHeight;
+ mirror.remove();
+ const rect=memo.getBoundingClientRect();
+ const caretY=rect.top+parseFloat(cs.paddingTop||"0")+lineY-memo.scrollTop;
+ const delta=caretY-targetY;
+ if(Math.abs(delta)>8){
+   window.scrollTo({top:Math.max(0,window.scrollY+delta),behavior:"auto"});
+ }
+}
+
+function setupMemoKeyboard(){
+ const memo=$("#timetableMemo");
+ if(!memo || memo.dataset.keyboardReady)return;
+ memo.dataset.keyboardReady="1";
+ const keep=()=>{
+   autoSizeMemo();
+   requestAnimationFrame(()=>requestAnimationFrame(keepMemoCaretCentered));
+ };
+ memo.addEventListener("focus",keep);
+ memo.addEventListener("input",keep);
+ memo.addEventListener("click",keep);
+ memo.addEventListener("keyup",keep);
+ if(window.visualViewport){
+   window.visualViewport.addEventListener("resize",()=>{
+     if(document.activeElement===memo)requestAnimationFrame(keepMemoCaretCentered);
+   });
+ }
 }
 
 function confirmDayReset(dayIndex){
