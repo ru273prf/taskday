@@ -9,6 +9,9 @@ injectedStyle.textContent=`.day-number-row{display:flex;align-items:center;gap:3
 .date-field{position:relative;height:56px;border:1px solid #e2e5ea;border-radius:14px;background:#fff;overflow:hidden}.date-display{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:#111;pointer-events:none;z-index:1}.date-field input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
 @media(max-width:600px){.card.calendar{width:100% !important;box-sizing:border-box}.grid{grid-template-columns:repeat(7,minmax(0,1fr)) !important;gap:2px !important;width:100%}.day{min-width:0 !important;width:100% !important;min-height:104px !important;padding:6px 2px !important;overflow:hidden;box-sizing:border-box}.day-number{font-size:15px !important}.day-number-row{gap:3px !important}.countdown-inline{font-size:9px !important;color:#555 !important;font-weight:400 !important}.cal-labels{display:block !important;margin-top:3px !important}.cal-label{display:-webkit-box !important;font-size:10px !important;line-height:1.15 !important;white-space:normal !important;overflow:hidden !important;text-overflow:ellipsis !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;margin:2px 0 !important;padding:2px 2px !important;border-radius:3px !important;word-break:break-all !important}}`;
 document.head.appendChild(injectedStyle);
+const homeStyle=document.createElement("style");
+homeStyle.textContent=`.study-link{color:#356ae6;text-decoration:none;font-weight:700;font-size:14px;padding:9px 11px;border:1px solid #dfe4e0;border-radius:11px;background:#fff}.countdown-only{margin-top:8px}`;
+document.head.appendChild(homeStyle);
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
@@ -230,43 +233,16 @@ function complete(id){
  },3000);
 }
 function taskCard(t){return '<div class="card"><div class="row"><button class="check" data-complete="'+t.id+'"></button><button class="task" data-edit="'+t.id+'"><div class="title">'+esc(t.title)+'</div>'+(t.date?'<div class="meta">'+(t.type==="long"?"長期":"短期")+" ・ "+fmt(t.date)+'</div>':"")+'</button>'+(t.date?'<div class="days '+(daysLeft(t.date)<0?"danger":daysLeft(t.date)===0?"today":"")+'">'+rem(t.date)+'</div>':"")+'</div></div>'}
-function countdownCard(c){return '<div class="card"><button class="count" data-count="'+c.id+'"><div><b>'+esc(c.title)+'</b><div class="meta">'+fmt(c.date)+'</div></div><div class="days '+(daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":"")+'">'+rem(c.date)+'</div></button></div>'}
+function countdownCard(c){return '<div class="card"><div class="count"><div><b>'+esc(c.title)+'</b><div class="meta">'+fmt(c.date)+'</div></div><div class="days '+(daysLeft(c.date)<0?"danger":daysLeft(c.date)===0?"today":"")+'">'+rem(c.date)+'</div></div></div>'}
 function renderHome(){
  refresh();
- const w=state.tasks.filter(t=>t.type==="weekly"),s=state.tasks.filter(t=>t.type==="short").sort((a,b)=>{
-   if(a.date&&!b.date)return -1;
-   if(!a.date&&b.date)return 1;
-   if(!a.date&&!b.date)return 0;
-   return a.date.localeCompare(b.date);
- });
-state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
+ state.countdowns.sort((a,b)=>daysLeft(a.date)-daysLeft(b.date));
+ const cards=state.countdowns.length
+   ?state.countdowns.map(countdownCard).join("")
+   :'<div class="card empty">登録されている目標日はありません</div>';
  $("#app").innerHTML=
- '<header><div><h1>TaskDay</h1><div class="date">'+new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"long"})+'</div></div><button class="add" id="plus">＋</button></header>'+
- section("＋ 毎週のタスク","addW",w,true)+
- section("＋ 短期タスク","addS",s,false)+
- '<div class="section"><button class="section-title link" id="completedToggle">完了済みタスク</button>'+
- '<div id="completedPanel" style="display:none;margin-top:9px">'+
- (state.completed.length?state.completed.map(t=>
- '<div class="card"><div class="row"><button class="check done" data-restore="'+t.id+'" aria-label="復活">✓</button><div style="flex:1"><div class="title" style="text-decoration:line-through;color:#9aa0a6">'+esc(t.title)+'</div><div class="meta">'+(t.type==="weekly"?"毎週":t.type==="long"?"長期":"短期")+' ・ 完了済み</div></div></div></div>'
- ).join(""):'<div class="card empty">完了したタスクはありません</div>')+
- '</div></div>'+
- '<div class="section"><div class="section-head"><b class="section-title">あと何日</b><button class="link" id="addC">追加</button></div>'+
- (state.countdowns.length?state.countdowns.map(countdownCard).join(""):'<div class="card empty">追加から目標日を登録できます</div>')+'</div>';
-
- $("#plus").onclick=()=>openTask("short");
- $("#addC").onclick=()=>openCountdown();
- $("#addW").onclick=()=>openTask("weekly");
- $("#addS").onclick=()=>openTask("short");
-
- document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>{
-   const t=state.completed.find(x=>x.id===b.dataset.restore);
-   if(t){
-     state.completed=state.completed.filter(x=>x.id!==t.id);
-     t.done=false;delete t.completedAt;state.tasks.push(t);save();render();
-   }
- });
- const completedToggle=$("#completedToggle"),completedPanel=$("#completedPanel");
- completedToggle.onclick=()=>{completedPanel.style.display=completedPanel.style.display==="none"?"block":"none"};
+   '<header><div><h1>あと何日</h1></div><a class="study-link" href="./index.html">勉強時間</a></header>'+
+   '<div class="section countdown-only">'+cards+'</div>';
  bind();
 }
 function section(title,id,list,weekly){return '<div class="section"><div class="section-head"><button class="section-title link" id="'+id+'">'+title+'</button>'+(weekly?'<span class="small">毎週月曜に復活</span>':"")+'</div>'+(list.length?list.map(taskCard).join(""):'<div class="card empty">'+title+' をタップして追加</div>')+'</div>'}
@@ -443,15 +419,5 @@ render();
 initCloud();
 window.TaskDay={render,openTask,openCountdown};
 
-// ===== Independent Study Time app entry =====
-function ensureStudyNav(){
-  const nav=document.querySelector("#bottomNav")||document.querySelector("nav");
-  if(!nav || nav.querySelector('a[href="./study.html"]')) return;
-  const a=document.createElement("a");
-  a.href="./study.html";
-  a.textContent="勉強時間";
-  if(location.pathname.endsWith("/study.html")) a.classList.add("active");
-  nav.appendChild(a);
-}
-ensureStudyNav();
+// Study time is the main entry page (index.html); no legacy navigation injection.
 })();
