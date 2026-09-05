@@ -10,7 +10,7 @@ injectedStyle.textContent=`.day-number-row{display:flex;align-items:center;gap:3
 @media(max-width:600px){.card.calendar{width:100% !important;box-sizing:border-box}.grid{grid-template-columns:repeat(7,minmax(0,1fr)) !important;gap:2px !important;width:100%}.day{min-width:0 !important;width:100% !important;min-height:104px !important;padding:6px 2px !important;overflow:hidden;box-sizing:border-box}.day-number{font-size:15px !important}.day-number-row{gap:3px !important}.countdown-inline{font-size:9px !important;color:#555 !important;font-weight:400 !important}.cal-labels{display:block !important;margin-top:3px !important}.cal-label{display:-webkit-box !important;font-size:10px !important;line-height:1.15 !important;white-space:normal !important;overflow:hidden !important;text-overflow:ellipsis !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;margin:2px 0 !important;padding:2px 2px !important;border-radius:3px !important;word-break:break-all !important}}`;
 document.head.appendChild(injectedStyle);
 const homeStyle=document.createElement("style");
-homeStyle.textContent=`.study-link{color:#356ae6;text-decoration:none;font-weight:700;font-size:14px;padding:9px 11px;border:1px solid #dfe4e0;border-radius:11px;background:#fff}.countdown-only{margin-top:8px}`;
+homeStyle.textContent=`.countdown-only{margin-top:8px}.home-add{width:42px;height:42px;border:1px solid #dfe4e0;background:#fff;border-radius:11px;font-size:26px;line-height:1;font-weight:500;color:#222}.home-nav{position:fixed;bottom:0;left:0;right:0;height:68px;background:rgba(255,255,255,.97);border-top:1px solid #e1e5e2;display:flex;justify-content:center;gap:6px;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.04)}.home-nav a{padding:10px 16px;border-radius:12px;color:#777;text-decoration:none;font-size:12px;display:flex;align-items:center;min-width:76px;min-height:46px;justify-content:center}.home-nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);display:none;align-items:flex-end;justify-content:center;padding:12px;z-index:200}.modal.show{display:flex}.sheet{width:min(650px,100%);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px 24px 18px 18px;padding:22px 18px}.sheet h2{margin:0 0 16px}.field{margin:13px 0}.field label{display:block;color:#777;font-size:12px;margin-bottom:6px}.field input{width:100%;padding:12px;border:1px solid #dfe4e0;border-radius:10px;background:#fff;box-sizing:border-box}.actions{display:flex;gap:8px;margin-top:12px}.actions button{flex:1;padding:13px;border-radius:11px;font-weight:800}.primary{border:0;background:#42ad5b;color:#fff}.secondary{border:1px solid #dfe4e0;background:#fff}@media(max-width:520px){.home-nav{justify-content:space-around;gap:0}.home-nav a{min-width:0;flex:1;padding-left:8px;padding-right:8px}.actions{flex-direction:column}}@media(min-width:521px){.modal{align-items:center}.sheet{border-radius:24px}}`
 document.head.appendChild(homeStyle);
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -241,8 +241,9 @@ function renderHome(){
    ?state.countdowns.map(countdownCard).join("")
    :'<div class="card empty">登録されている目標日はありません</div>';
  $("#app").innerHTML=
-   '<header><div><h1>あと何日</h1></div><a class="study-link" href="./index.html">勉強時間</a></header>'+
+   '<header><div><h1>あと何日</h1></div><button class="home-add" id="addCountdown" aria-label="あと何日を追加">＋</button></header>'+
    '<div class="section countdown-only">'+cards+'</div>';
+ $("#addCountdown").onclick=()=>openCountdown();
  bind();
 }
 function section(title,id,list,weekly){return '<div class="section"><div class="section-head"><button class="section-title link" id="'+id+'">'+title+'</button>'+(weekly?'<span class="small">毎週月曜に復活</span>':"")+'</div>'+(list.length?list.map(taskCard).join(""):'<div class="card empty">'+title+' をタップして追加</div>')+'</div>'}
