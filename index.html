@@ -4,225 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#42ad5b">
-<title>勉強時間 | TaskDay</title>
+<title>時間割 | TaskDay</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f7f8f7;color:#1d211e;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
-button,input{font:inherit}button{cursor:pointer}
-.app{max-width:760px;margin:auto;padding:18px 14px 92px}
-header{display:flex;justify-content:space-between;align-items:center;padding:4px 4px 12px}
-.project-btn{border:0;background:none;font-size:22px;font-weight:800;padding:7px 0}
-.settings{border:1px solid #dfe4e0;background:#fff;border-radius:11px;padding:8px 11px}
-.card{background:#fff;border:1px solid #e1e5e2;border-radius:18px;margin-bottom:12px;padding:16px}
-.meta{text-align:center;color:#7b827d;font-size:12px}
-.summary{display:flex;justify-content:center;gap:34px;margin:12px 0 4px;text-align:center}
-.summary b{display:block;color:#2d9147;font-size:19px}
-.summary span{display:block;color:#7b827d;font-size:11px;margin-top:2px}
-.switch-row{display:flex;justify-content:flex-end;gap:7px;margin-bottom:3px}
-.switch-row button{border:1px solid #ccd6ce;background:#fff;border-radius:9px;padding:5px 9px;font-size:12px}
-.legend{display:flex;justify-content:center;gap:18px;color:#7b827d;font-size:11px;margin-top:2px}
-.legend i{display:inline-block;width:27px;border-top:2px dashed #555;vertical-align:middle;margin-right:5px}
-.legend i.actual{border-top-style:solid;border-color:#42ad5b}
-.chart{width:100%;display:block}
-.chart-note{text-align:center;color:#7b827d;font-size:11px;margin-top:3px}
-.section-title{font-size:16px;font-weight:800;margin:0 0 10px}
-.calendar-card{padding:14px}
-.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.calhead button{border:0;background:none;font-size:23px;padding:4px 10px}
-.month-title{font-weight:800;font-size:16px}
-.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.week div{text-align:center;color:#777;font-size:11px;font-weight:700;padding:4px}
-.day{min-height:48px;border:1px solid transparent;border-radius:10px;background:#fff;font-size:12px;padding:4px 2px;position:relative}
-.day.other{color:#bbb}
-.day.in-range{border-color:#edf0ed}
-.day.has{border-color:#b9dfc1;color:#2d9147;font-weight:800}
-.day.selected{background:#42ad5b;color:#fff;border-color:#42ad5b}
-.day small{display:block;font-size:9px;margin-top:2px}
-nav{position:fixed;bottom:0;left:0;right:0;height:68px;background:rgba(255,255,255,.97);border-top:1px solid #e1e5e2;display:flex;justify-content:center;gap:6px;z-index:100}
-nav a{padding:10px 16px;border-radius:12px;color:#777;text-decoration:none;font-size:12px;display:flex;align-items:center}
-nav a.active{background:#edf7ef;color:#2d9147;font-weight:800}
-.modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;padding:16px;z-index:200}
-.modal.show{display:flex}
-.sheet{width:min(650px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:24px;padding:22px}
-.sheet h2{margin:0 0 16px}
-.label{display:block;color:#7b827d;font-size:12px;margin:13px 0 6px}
-.input{width:100%;padding:12px;border:1px solid #dfe4e0;border-radius:10px;background:#fff}
-.primary,.secondary{width:100%;padding:13px;border-radius:11px;font-weight:800;margin-top:10px}
-.primary{border:0;background:#42ad5b;color:#fff}.secondary{border:1px solid #dfe4e0;background:#fff}
-.project-item{display:flex;align-items:center;border:1px solid #e1e5e2;border-radius:12px;padding:12px;margin:8px 0}
-.project-main{flex:1;border:0;background:none;text-align:left}.project-main b{display:block}.project-main small{color:#7b827d}
-.row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #edf0ed}
-.danger{background:#e24b4b!important;color:#fff!important;border:0!important}
-.note{text-align:center;color:#7b827d;font-size:11px;line-height:1.6}
-.empty{text-align:center;color:#7b827d;padding:28px}
-.wheels{display:flex;justify-content:center;gap:12px;margin:16px 0}
-.wheel{width:120px;height:172px;border:1px solid #dfe4e0;border-radius:14px;overflow:hidden;position:relative;background:#fafbfa;touch-action:none;user-select:none}
-.wheel-list{transform:translateY(65px)}
-.wheel:after{content:"";position:absolute;left:0;right:0;top:65px;height:40px;border-top:1px solid #bdd4c2;border-bottom:1px solid #bdd4c2;background:#42ad5b10;pointer-events:none}
-.wheel-item{height:40px;display:flex;align-items:center;justify-content:center;color:#8a908c}
-.wheel-item.selected{font-weight:900;color:#111!important}
-.warning{background:#fff5f5;border:1px solid #f2cccc;border-radius:12px;padding:12px;color:#b43b3b;font-size:12px;line-height:1.6}
-</style>
-
-<style id="study-wheel-fix">
-.wheel{touch-action:none;overflow:hidden;position:relative}
-.wheel-list{will-change:transform;user-select:none;-webkit-user-select:none}
-.wheel-item{height:42px;display:flex;align-items:center;justify-content:center}
-</style>
-
-
-<style id="study-calendar-color-fix">
-.calendar-card .day.sunday,.calendar-card .day.holiday{color:#d33!important}
-.calendar-card .day.saturday{color:#3478d4!important}
-.calendar-card .day.other.sunday,.calendar-card .day.other.holiday{color:#e8a0a0!important}
-.calendar-card .day.other.saturday{color:#9ab8e5!important}
-</style>
-
-<style id="study-cal-colors-v3">
-.calendar-card .day.sunday,.calendar-card .day.sunday .day-number,.calendar-card .day.holiday{color:#d33!important}
-.calendar-card .day.saturday,.calendar-card .day.saturday .day-number{color:#3478d4!important}
-.calendar-card .day.selected{color:#fff!important}
-</style>
-<style id="study-chart-v25">
-.wheel-list{transition:transform .08s ease-out;touch-action:none}
-.wheel-item.selected{font-weight:900!important;color:#111!important}
-</style>
-
-<style id="study-wheel-v7">
-.wheel{height:168px;overflow:hidden;position:relative;touch-action:none}
-.wheel::before{content:"";position:absolute;left:0;right:0;top:63px;height:42px;border-top:1px solid rgba(70,180,100,.35);border-bottom:1px solid rgba(70,180,100,.35);background:rgba(70,180,100,.08);pointer-events:none;z-index:2}
-.wheel-list{position:absolute;left:0;right:0;top:0;will-change:transform;user-select:none;-webkit-user-select:none}
-.wheel-item{height:42px;line-height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#888;box-sizing:border-box}
-.wheel-item.selected{font-weight:800;color:#111}
-</style>
-
-
-<style id="study-metrics-v12">
-.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
-.summary>div{text-align:center;min-width:0}
-.summary b{display:block;font-size:clamp(20px,2.5vw,30px);font-weight:800}
-.summary span{display:block;margin-top:5px;color:#777;font-size:14px}
-@media(max-width:800px){.summary{grid-template-columns:repeat(2,1fr)}}
-</style>
-
-<style id="study-forecast-v1">
-.forecast-box{margin:12px 0 8px;padding:13px 14px;border:1px solid #e1e5e2;border-radius:14px;background:#fafcfb;display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}
-.forecast-box b{display:block;color:#7b827d;font-size:11px;font-weight:700;margin-bottom:4px}
-.forecast-box strong{display:block;font-size:17px;font-weight:800;color:#2d9147}
-.forecast-box small{grid-column:1/-1;color:#7b827d;font-size:10px;margin-top:1px}
-@media(max-width:520px){.forecast-box{grid-template-columns:1fr}.forecast-box small{grid-column:auto}}
-</style>
-
-<style id="study-recordable-v14">
-.day:not(.recordable){cursor:default}
-.day.in-range:not(.recordable){opacity:.55}
-</style>
-
-
-
-<style id="study-v309-ui">
-/* Keep summary values such as 12時間42分 on one line. */
-.summary>div{min-width:0;flex:1}
-.summary b{font-size:clamp(15px,2.5vw,22px);white-space:nowrap;letter-spacing:-.03em}
-@media(max-width:700px){.summary{gap:10px}.summary b{font-size:15px}.summary span{font-size:10px}}
-/* Achievement button sits between project selector and settings. */
-.achievement-btn{border:1px solid #b9dfc1;background:#edf8ef;color:#2d9147;border-radius:11px;padding:8px 10px;font-weight:800;font-size:12px;white-space:nowrap}
-/* Long-press deletion affordance. */
-.delete-hold{touch-action:none;user-select:none;-webkit-user-select:none}
-/* Horizontal project-type picker. */
-.type-wheel-wrap{display:flex;justify-content:center;overflow:hidden;margin:10px 0 4px}
-.type-wheel-wrap .wheel.horizontal-wheel{width:300px;height:76px;border-radius:14px}
-.horizontal-wheel::before{left:108px;right:auto;top:0;width:54px;height:74px;border-left:1px solid rgba(70,180,100,.35);border-right:1px solid rgba(70,180,100,.35);border-top:0;border-bottom:0}
-.horizontal-wheel .wheel-list{top:0;left:0;right:auto;height:76px;display:flex;align-items:center;gap:0}
-.horizontal-wheel .wheel-item{width:54px;min-width:54px;height:76px;line-height:76px}
-.horizontal-wheel .wheel-item.selected{font-weight:900;color:#111}
-</style>
-
-
-<style id="study-ux-v1">
-/* UX polish: preserve existing functionality while improving touch, spacing and responsive behavior. */
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{min-height:100dvh;overscroll-behavior-x:none}.modal-open{overflow:hidden;touch-action:none}
-button,a,input{ -webkit-tap-highlight-color:transparent }
-button{touch-action:manipulation}
-button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(66,173,91,.32);outline-offset:2px}
-.app{padding-top:max(14px,env(safe-area-inset-top));padding-bottom:calc(82px + env(safe-area-inset-bottom))}
-header{gap:8px;position:sticky;top:0;z-index:20;background:rgba(247,248,247,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin:0 -2px 10px;padding-top:8px}
-.project-btn,.settings,.switch-row button,.calhead button,.primary,.secondary,.project-main,.day,.achievement-btn{transition:transform .12s ease,background-color .12s ease,border-color .12s ease,box-shadow .12s ease}
-.project-btn:active,.settings:active,.switch-row button:active,.calhead button:active,.primary:active,.secondary:active,.project-main:active,.day:active,.achievement-btn:active{transform:scale(.98)}
-.settings{white-space:nowrap;min-height:42px}
-.project-btn{min-height:42px;text-align:left;max-width:calc(100% - 52px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card{box-shadow:0 1px 2px rgba(0,0,0,.025)}
-.summary{gap:clamp(8px,2vw,22px)}
-.summary b{line-height:1.15;font-variant-numeric:tabular-nums}
-.summary span{line-height:1.25}
-.forecast-box strong{font-variant-numeric:tabular-nums}
-.chart{min-height:220px;overflow:visible}
-.legend{gap:24px}
-.calendar-card{overflow:hidden}
-.week div{padding-top:5px;padding-bottom:5px}
-.day{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;cursor:pointer}
-.day.recordable{cursor:pointer}
-.day.recordable:hover{border-color:#b9dfc1;background:#fbfffc}
-.day.has{box-shadow:inset 0 0 0 1px rgba(66,173,91,.12)}
-.day small{font-variant-numeric:tabular-nums;line-height:1.1}
-nav{height:68px;padding-bottom:0;box-shadow:0 -2px 12px rgba(0,0,0,.04)}
-nav a{min-width:76px;min-height:40px;justify-content:center;padding-top:6px;padding-bottom:6px}
-.modal{padding:12px;align-items:flex-end;background:rgba(0,0,0,.38);overscroll-behavior:contain}
-.sheet{max-height:min(88dvh,760px);padding:22px 18px calc(20px + env(safe-area-inset-bottom));border-radius:24px 24px 18px 18px;box-shadow:0 -10px 40px rgba(0,0,0,.12);animation:studySheetIn .18s ease-out}
-@keyframes studySheetIn{from{transform:translateY(16px);opacity:.7}to{transform:translateY(0);opacity:1}}
-.primary,.secondary{min-height:48px}
-.row>button{border:0;background:none;padding:10px 2px;text-align:left;width:100%;min-height:46px}
-.project-item{min-height:62px}
-.project-main{min-height:54px}
-.wheels{gap:14px}
-.wheel{touch-action:none;overscroll-behavior:contain;box-shadow:inset 0 0 0 1px rgba(0,0,0,.01)}
-.wheel-item{font-variant-numeric:tabular-nums}
-.wheel-item.selected{transform:scale(1.03)}
-.horizontal-wheel .wheel-item{font-size:21px}
-.type-wheel-wrap .horizontal-wheel{touch-action:none}
-@media (max-width:520px){
-  .app{padding-left:10px;padding-right:10px}
-  header{padding-left:2px;padding-right:2px}
-  .summary{gap:6px}
-  .summary b{font-size:14px;letter-spacing:-.04em}
-  .summary span{font-size:9px}
-  .forecast-box{margin-top:10px}
-  .day{min-height:49px;padding-left:1px;padding-right:1px}
-  .day small{font-size:8px}
-  .sheet{width:100%;padding-left:16px;padding-right:16px}
-  .wheels{gap:10px}
-  .wheel{width:calc((100vw - 64px)/2);max-width:150px}
-  nav{justify-content:space-around;gap:0}
-  nav a{min-width:0;flex:1;padding-left:8px;padding-right:8px}
-}
-@media (min-width:801px){
-  .app{max-width:680px;padding-left:18px;padding-right:18px}
-  .summary b{font-size:20px}
-  .summary span{font-size:12px}
-  .forecast-box strong{font-size:16px}
-  .calendar-card .day{min-height:46px}
-  .chart{min-height:190px}
-}
-@media (min-width:521px){
-  .modal{align-items:center}
-  .sheet{border-radius:24px}
-}
-@media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
-}
+*{box-sizing:border-box}body{margin:0;background:#f7f8f7;color:#171b18;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+button,input,textarea{font:inherit}button{cursor:pointer}.app{max-width:760px;margin:auto;padding:18px 14px 96px}.header{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 14px}.header h1{font-size:28px;margin:0}.note{color:#777;font-size:12px;line-height:1.6}.panel{background:#fff;border:1px solid #e1e5e2;border-radius:18px;padding:18px}.table-wrap{background:#fff;border:1px solid #cfd4d1;border-radius:18px;overflow:hidden}.timetable{display:grid;grid-template-columns:46px repeat(5,minmax(0,1fr));width:100%}.cell{min-width:0;border-right:1px solid #cfd4d1;border-bottom:1px solid #cfd4d1}.cell:nth-child(6n){border-right:0}.head{height:44px;background:#f3f6f4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#606761}.period{min-height:76px;background:#f3f6f4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#606761}.slot{width:100%;min-height:76px;padding:7px 4px;border:0;background:#fff;color:#171b18;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;word-break:break-all;overflow:hidden}.slot.done{background:#eaf6ed}.slot.empty{background:#eaf6ed}.slot span{max-width:100%;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.empty-title{font-size:18px;color:#c6cbc7}.timetable-memo{margin-top:14px;background:#fff;border:1px solid #e1e5e2;border-radius:18px;width:100%;min-height:120px;height:120px;padding:16px;resize:none;overflow:hidden;line-height:1.6;color:#171b18;display:block}.timetable-memo::placeholder{color:#a0a5a2}.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);display:none;align-items:flex-end;justify-content:center;padding:12px;z-index:200}.modal.show{display:flex}.sheet{width:min(650px,100%);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px 24px 18px 18px;padding:22px 18px}.sheet h2{margin:0 0 16px;font-size:22px}.label{display:block;color:#777;font-size:12px;margin:13px 0 6px}.input{width:100%;padding:12px;border:1px solid #dfe4e0;border-radius:10px;background:#fff;box-sizing:border-box}.memo{min-height:120px;resize:vertical;line-height:1.5}.status-title{margin:18px 0 8px;color:#777;font-size:12px}.status-buttons{display:flex;gap:10px}.status-buttons button{flex:1;height:52px;border:1px solid #dfe4e0;border-radius:12px;background:#fff;font-size:25px;font-weight:800}.status-buttons .selected{background:#eaf6ed;border-color:#b9dfc1;color:#2d9147}.status-buttons .status-x.selected{background:#fff;color:#555;border-color:#d6d9d7}.actions{display:flex;gap:8px;margin-top:14px}.actions button{flex:1;padding:13px;border-radius:11px;font-weight:800}.primary{border:0;background:#42ad5b;color:#fff}.secondary{border:1px solid #dfe4e0;background:#fff}.danger{border:0;background:#e24b4b;color:#fff}.auth{max-width:390px;margin:50px auto}.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:68px;background:rgba(255,255,255,.97);border-top:1px solid #e1e5e2;display:flex;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.04)}.bottom-nav a{flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#777;font-size:12px;font-weight:700}.bottom-nav a.active{background:#edf7ef;color:#2d9147}
+@media(min-width:801px){.app{max-width:680px}.slot,.period{min-height:68px}.header h1{font-size:25px}.timetable{grid-template-columns:42px repeat(5,minmax(0,1fr))}}
+@media(max-width:430px){.app{padding-left:8px;padding-right:8px}.timetable{grid-template-columns:34px repeat(5,minmax(0,1fr))}.head{height:40px;font-size:12px}.slot,.period{min-height:70px}.slot{font-size:11px;padding:5px 3px}.period{font-size:11px}.sheet{padding:20px 16px}}
+@media(min-width:521px){.modal{align-items:center}.sheet{border-radius:24px}}
 </style>
 </head>
 <body>
-<div id="app" class="app"></div>
-<nav id="bottomNav">
-  <a class="active" href="./index.html">勉強時間</a>
-  <a href="./timetable.html">時間割</a>
-  <a href="./home.html">ホーム</a>
-</nav>
+<main id="app" class="app">
+ <div class="header"><h1>時間割</h1></div>
+ <div class="table-wrap"><div class="timetable" id="grid">
+  <div class="cell head">時限</div><div class="cell head">月</div><div class="cell head">火</div><div class="cell head">水</div><div class="cell head">木</div><div class="cell head">金</div>
+  <div class="cell period">1</div><div class="cell period">2</div><div class="cell period">3</div><div class="cell period">4</div><div class="cell period">5</div><div class="cell period">6</div>
+ </div></div>
+</main>
+<nav class="bottom-nav"><a href="./index.html">勉強時間</a><a class="active" href="./index.html">時間割</a><a href="./home.html">ホーム</a></nav>
 <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./study.js?v=17"></script>
+<script src="./timetable.js?v=2"></script>
 </body>
 </html>

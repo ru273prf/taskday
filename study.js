@@ -24,6 +24,11 @@ const minutesText=m=>`${Math.floor(m/60)}時間${String(m%60)}分`;
 const money=m=>Math.round(m/60*1250).toLocaleString("ja-JP");
 const DAY=86400000;
 let user=null,state={projects:[],logs:[],goals:[]},currentId=null,mode="hours",selectedDate=key(new Date()),calendarMonth=new Date();
+let pinnedProjectId=null;
+const PIN_KEY="taskday-study-pinned-project-v1";
+function pinnedKey(){return `${PIN_KEY}:${user?.id||"guest"}`}
+function loadPinned(){pinnedProjectId=localStorage.getItem(pinnedKey())||null}
+function savePinned(id){pinnedProjectId=id||null;if(pinnedProjectId)localStorage.setItem(pinnedKey(),pinnedProjectId);else localStorage.removeItem(pinnedKey())}
 
 async function init(){
  const {data,error}=await sb.auth.getSession();
@@ -31,11 +36,13 @@ async function init(){
  user=data.session?.user||null;
  if(!user){auth();return}
  await load();
- if(!currentId&&state.projects[0])currentId=state.projects[0].id;
+ loadPinned();
+ const pinned=state.projects.find(x=>x.id===pinnedProjectId);
+ currentId=pinned?.id||state.projects[0]?.id||null;
  render();
  sb.auth.onAuthStateChange(async(_,session)=>{
   user=session?.user||null;
-  if(user){await load();if(!currentId&&state.projects[0])currentId=state.projects[0].id;render();}
+  if(user){await load();loadPinned();const pinned=state.projects.find(x=>x.id===pinnedProjectId);currentId=pinned?.id||state.projects[0]?.id||null;render();}
  });
 }
 
@@ -313,9 +320,22 @@ window.selectDay=k=>{
 }
 window.projects=function projects(){
  const items=state.projects.map(x=>`<div class="project-item"><button class="project-main" onclick="switchProject('${x.id}')"><b>${esc(x.name)} ${x.id===currentId?"✓":""}</b><small>種類 ${projectType(x)}　${fmt(x.start_date)} ～ ${fmt(x.end_date)}　目標 ${minutesText(x.goal_minutes)}</small></button></div>`).join("");
- open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
+ open(`<h2>プロジェクト</h2>${items}<button class="primary" onclick="newProject()">＋ 新規プロジェクト</button><button class="secondary" onclick="pinProject()">📌 ピン留め</button><button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
 window.switchProject=id=>{currentId=id;const pr=p();calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);close();render()};
+
+window.pinProject=function pinProject(){
+ const items=state.projects.map(x=>`<button class="project-main" style="width:100%;text-align:left;margin-bottom:8px" onclick="setPinnedProject('${x.id}')"><b>${esc(x.name)} ${x.id===pinnedProjectId?"📌":""}</b><small>種類 ${projectType(x)}　${fmt(x.start_date)} ～ ${fmt(x.end_date)}</small></button>`).join("");
+ open(`<h2>ピン留め</h2>${items}<button class="secondary" onclick="closeStudyModal()">戻る</button>`);
+}
+window.setPinnedProject=function setPinnedProject(id){
+ const pr=state.projects.find(x=>x.id===id);
+ if(!pr)return;
+ savePinned(id);
+ currentId=id;
+ calendarMonth=new Date(dateOf(pr.start_date).getFullYear(),dateOf(pr.start_date).getMonth(),1);
+ close();render();
+};
 
 window.settings=function settings(){
  open(`<h2>設定</h2>

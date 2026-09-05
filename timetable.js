@@ -8,19 +8,24 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const DAYS=["月","火","水","木","金"];
 const PERIODS=[1,2,3,4,5,6];
 const KEY="taskday-timetable-v1";
+const MEMO_KEY="taskday-timetable-memo-v1";
+let timetableMemo="";
 let user=null;
 let cells=Array.from({length:30},(_,i)=>({id:i,title:"",memo:"",done:false}));
 let longed=false;
 
 function indexOfCell(r,c){return r*5+c}
-function loadLocal(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");if(Array.isArray(x)){x.forEach((v,i)=>{if(cells[i])cells[i]={...cells[i],...v}})}}catch(e){}}
-function saveLocal(){localStorage.setItem(KEY,JSON.stringify(cells))}
+function loadLocal(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");if(Array.isArray(x)){x.forEach((v,i)=>{if(cells[i])cells[i]={...cells[i],...v}})}timetableMemo=String(localStorage.getItem(MEMO_KEY)||"")}catch(e){}}
+function saveLocal(){localStorage.setItem(KEY,JSON.stringify(cells));localStorage.setItem(MEMO_KEY,timetableMemo)}
 function encodeCell(c){return JSON.stringify({slot:c.id,title:c.title,memo:c.memo,done:!!c.done})}
 function decodeRow(r){try{const x=JSON.parse(r.name||"");if(Number.isInteger(x.slot)&&x.slot>=0&&x.slot<30)return {id:x.slot,title:String(x.title||""),memo:String(x.memo||""),done:!!x.done}}catch(e){}return null}
 
 async function loadCloud(){
  const {data,error}=await sb.from("tasks").select("id,name,type,completed").eq("user_id",user.id).eq("type","timetable");
  if(error){console.error(error);return false}
+ const {data:noteRows,error:noteError}=await sb.from("tasks").select("id,name,type,completed").eq("user_id",user.id).eq("type","timetable_note");
+ if(!noteError && noteRows?.length) timetableMemo=String(noteRows[0].name||"");
+ else if(noteError) console.error(noteError);
  const cloud=Array.from({length:30},(_,i)=>({id:i,title:"",memo:"",done:false}));
  (data||[]).forEach(r=>{const x=decodeRow(r);if(x)cloud[x.id]=x});
  const hasCloud=(data||[]).length>0;
@@ -36,6 +41,12 @@ async function saveCloud(){
  const del=await sb.from("tasks").delete().eq("user_id",user.id).eq("type","timetable");
  if(del.error){console.error(del.error);return}
  if(rows.length){const ins=await sb.from("tasks").insert(rows);if(ins.error)console.error(ins.error)}
+ const oldNotes=await sb.from("tasks").delete().eq("user_id",user.id).eq("type","timetable_note");
+ if(oldNotes.error){console.error(oldNotes.error);return}
+ if(timetableMemo.trim()){
+  const insNote=await sb.from("tasks").insert({id:crypto.randomUUID(),user_id:user.id,name:timetableMemo,type:"timetable_note",due_date:null,completed:false,completed_at:null});
+  if(insNote.error)console.error(insNote.error);
+ }
 }
 
 function authUI(){
@@ -65,6 +76,18 @@ function render(){
    bindSlot(el,id);grid.appendChild(el);
   }
  }
+ const memo=$("#timetableMemo");
+ if(memo){
+  memo.value=timetableMemo;
+  autoSizeMemo();
+  memo.oninput=()=>{timetableMemo=memo.value;autoSizeMemo();saveCloud();};
+ }
+}
+function autoSizeMemo(){
+ const memo=$("#timetableMemo");
+ if(!memo)return;
+ memo.style.height="auto";
+ memo.style.height=Math.max(120,memo.scrollHeight)+"px";
 }
 
 function confirmDayReset(dayIndex){
