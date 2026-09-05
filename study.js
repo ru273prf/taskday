@@ -107,7 +107,12 @@ function logsFor(pr){
  }
  return [...byDate.values()].sort((a,b)=>String(a.study_date).localeCompare(String(b.study_date)));
 }
-function total(pr){return logsFor(pr).reduce((a,x)=>a+(Number(x.minutes)||0),0)}
+function total(pr){
+  if(!pr)return 0;
+  const today=key(new Date());
+  const through=today<pr.start_date?pr.start_date:today>pr.end_date?pr.end_date:today;
+  return actualTotalAt(pr,through);
+}
 function logAt(pr,date){return logsFor(pr).find(x=>x.study_date===date)}
 
 function durationDays(start,end){
@@ -375,28 +380,35 @@ window.deleteAndCreateNext=async function(id){
 }
 
 window.goalEdit=function goalEdit(){
- const pr=p();
- open(`<h2>目標設定・変更</h2>
-  <label class="label">新しい目標終了日</label>
-  <input id="ge" class="input" type="date" min="${pr.start_date}" value="${pr.end_date}">
-  <label class="label">新しい目標勉強時間（時間）</label>
-  <input id="gg" class="input" type="number" min="0" step="0.25" value="${pr.goal_minutes/60}">
-  <p class="note">目標開始日はプロジェクト作成時に設定した日で固定です。<br>目標を変更すると、前の目標線は消え、新しい目標から一本の直線として表示されます。</p>
-  <button class="primary" onclick="saveGoal()">保存</button>
-  <button class="secondary" onclick="closeStudyModal()">戻る</button>`);
+  const pr=p();
+  const types=Array.from({length:10},(_,i)=>i+1);
+  open(`<h2>目標設定・変更</h2>
+   <label class="label">新しいプロジェクト名</label>
+   <input id="gn" class="input" type="text" value="${esc(pr.name)}">
+   <label class="label">新しい目標開始日</label>
+   <input id="gs" class="input" type="date" value="${pr.start_date}">
+   <label class="label">新しい目標終了日</label>
+   <input id="ge" class="input" type="date" min="${pr.start_date}" value="${pr.end_date}">
+   <label class="label">新しい目標勉強時間（時間）</label>
+   <input id="gg" class="input" type="number" min="0" step="0.25" value="${pr.goal_minutes/60}">
+   <label class="label">新しい種類</label>
+   <div class="wheels type-wheel-wrap">${wheel("editProjectType",types,projectType(pr))}</div>
+   <p class="note">同じ種類のプロジェクトは勉強時間・カレンダーを共有します。</p>
+   <button class="primary" onclick="saveGoal()">保存</button>
+   <button class="secondary" onclick="closeStudyModal()">戻る</button>`);
 }
 window.saveGoal=async()=>{
- const pr=p(),end=$("#ge").value,h=Number($("#gg").value);
- if(!end||end<=pr.start_date||!Number.isFinite(h)||h<0){alert("新しい目標終了日・勉強時間を確認してください。");return}
- const minutes=Math.round(h*60);
- const r=await sb.from("study_projects").update({end_date:end,goal_minutes:minutes}).eq("id",pr.id).eq("user_id",user.id);
- if(r.error){alert("目標設定を変更できませんでした。\n\n"+r.error.message);return}
- // 履歴機能は廃止。過去の履歴データもこのプロジェクトについて削除する。
- const del=await sb.from("study_goal_history").delete().eq("project_id",pr.id).eq("user_id",user.id);
- if(del.error){alert("目標設定は更新されましたが、旧履歴の削除に失敗しました。\n\n"+del.error.message);}
- pr.end_date=end;pr.goal_minutes=minutes;
- state.goals=state.goals.filter(g=>g.project_id!==pr.id);
- closeStudyModal();render();
+  const pr=p(),name=$("#gn").value.trim(),start=$("#gs").value,end=$("#ge").value,h=Number($("#gg").value),type=Number($("#editProjectTypeWheel")?.dataset.selected||projectType(pr));
+  if(!name||!start||!end||end<start||!Number.isFinite(h)||h<0||!Number.isInteger(type)||type<1||type>10){alert("入力内容を確認してください。");return}
+  const minutes=Math.round(h*60);
+  const r=await sb.from("study_projects").update({name,start_date:start,end_date:end,goal_minutes:minutes,project_type:type}).eq("id",pr.id).eq("user_id",user.id);
+  if(r.error){alert("目標設定を変更できませんでした。\n\n"+r.error.message);return}
+  const del=await sb.from("study_goal_history").delete().eq("project_id",pr.id).eq("user_id",user.id);
+  if(del.error){alert("目標設定は更新されましたが、旧履歴の削除に失敗しました。\n\n"+del.error.message);}
+  pr.name=name;pr.start_date=start;pr.end_date=end;pr.goal_minutes=minutes;pr.project_type=type;
+  state.goals=state.goals.filter(g=>g.project_id!==pr.id);
+  calendarMonth=new Date(dateOf(start).getFullYear(),dateOf(start).getMonth(),1);
+  closeStudyModal();render();
 }
 
 window.newProject=function newProject(){
