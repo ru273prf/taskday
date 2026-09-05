@@ -57,8 +57,8 @@ function render(){
   for(let c=0;c<5;c++){
    const id=indexOfCell(r,c),item=cells[id];
    const el=document.createElement("button");
-   el.type="button";el.className="slot"+(item.done?" done":"");el.dataset.id=id;
-   el.innerHTML=item.title?`<span>${esc(item.title)}</span>`:'<span class="empty-title">＋</span>';
+   el.type="button";el.className="slot"+(item.done?" done":"")+(!item.title?" empty":"");el.dataset.id=id;
+   el.innerHTML=item.title?`<span>${esc(item.title)}</span>`:"";
    bindSlot(el,id);grid.appendChild(el);
   }
  }
@@ -71,7 +71,7 @@ function bindSlot(el,id){
   timer=setTimeout(()=>{longed=true;openSlotActions(id)},650);
  });
  ["pointerup","pointercancel","pointerleave"].forEach(ev=>el.addEventListener(ev,()=>{if(timer)clearTimeout(timer)}));
- el.addEventListener("click",e=>{if(longed){e.preventDefault();e.stopPropagation();longed=false;return}openDetails(id)});
+ el.addEventListener("click",e=>{if(longed){e.preventDefault();e.stopPropagation();longed=false;return}if(!cells[id].title)return;openDetails(id)});
 }
 function showModal(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show")}
 function closeModal(){$("#modal").classList.remove("show");$("#sheet").innerHTML=""}
