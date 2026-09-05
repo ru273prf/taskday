@@ -51,9 +51,12 @@ function authUI(){
 
 function render(){
  const grid=$("#grid");
- grid.innerHTML="<div class=\"cell head\">時限</div>"+DAYS.map(d=>`<div class=\"cell head\">${d}</div>`).join("");
+ grid.innerHTML="<div class=\"cell head\">時限</div>"+DAYS.map((d,i)=>`<button type="button" class="cell head day-head" data-day="${i}">${d}</button>`).join("");
+ grid.querySelectorAll(".day-head").forEach(el=>{
+  el.addEventListener("click",()=>confirmDayReset(Number(el.dataset.day)));
+ });
  for(let r=0;r<6;r++){
-  grid.insertAdjacentHTML("beforeend",`<div class=\"cell period\">${r+1}</div>`);
+  grid.insertAdjacentHTML("beforeend",`<div class="cell period">${r+1}</div>`);
   for(let c=0;c<5;c++){
    const id=indexOfCell(r,c),item=cells[id];
    const el=document.createElement("button");
@@ -62,6 +65,21 @@ function render(){
    bindSlot(el,id);grid.appendChild(el);
   }
  }
+}
+
+function confirmDayReset(dayIndex){
+ const day=DAYS[dayIndex];
+ showModal(`<h2>${day}曜日をリセットしますか？</h2><p class="note">この曜日の課題チェックだけを白に戻します。授業名とメモは変更されません。</p><div class="actions"><button type="button" class="secondary" id="noReset">いいえ</button><button type="button" class="primary" id="yesReset">はい</button></div>`);
+ $("#noReset").onclick=closeModal;
+ $("#yesReset").onclick=async()=>{
+  for(let r=0;r<6;r++){
+   const c=cells[indexOfCell(r,dayIndex)];
+   if(c.title)c.done=false;
+  }
+  closeModal();
+  render();
+  await saveCloud();
+ };
 }
 function bindSlot(el,id){
  let timer=null;
