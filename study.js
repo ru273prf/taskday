@@ -168,7 +168,7 @@ function render(){
  const t=total(pr),isMoney=mode==="money",metrics=currentMetrics(pr);
  const targetValue=isMoney?money(pr.goal_minutes)+"円":minutesText(pr.goal_minutes);
  const totalValue=isMoney?money(t)+"円":minutesText(t);
- $("#app").innerHTML=`<header><button class="project-btn" onclick="projects()">${esc(pr.name)} ▾</button>${t>=Number(pr.goal_minutes)&&Number(pr.goal_minutes)>0?'<button class="achievement-btn" onclick="goalAchieved()">おめでとうございます 目標を達成しました🎉</button>':''}<button class="settings" onclick="settings()">⚙ 設定</button></header>
+ $("#app").innerHTML=`<header><button class="project-btn" onclick="projects()">${esc(pr.name)} ▾</button><button class="settings" onclick="settings()">⚙ 設定</button></header>
  <div class="card">
   <div class="meta">${fmt(pr.start_date)} ～ ${fmt(pr.end_date)}</div>
   <div class="summary">
@@ -180,13 +180,15 @@ function render(){
   </div>
   <div class="forecast-box">
    <div><b>実績通りなら</b><strong>${metrics.forecastDate?fmt(metrics.forecastDate):"算出不可"}</strong></div>
-   <div><b>目標終了日との差</b><strong>${metrics.forecastErrorDays===null?"—":metrics.forecastErrorDays===0?"±0日":metrics.forecastErrorDays<0?`${Math.abs(metrics.forecastErrorDays)}日早い`:`${metrics.forecastErrorDays}日遅い`}</strong></div>
+   <div><b>目標終了日との差</b><strong>${metrics.forecastErrorDays===null?"—":metrics.forecastErrorDays===0?"±0日":metrics.forecastErrorDays<0?`-${Math.abs(metrics.forecastErrorDays)}日早い`:`+${metrics.forecastErrorDays}日遅い`}</strong></div>
+   <small>目標時間 ÷ 実績平均 ${metrics.actualAvg>0?`= 約${metrics.forecastDays}日`:"（実績平均が0のため未算出）"}</small>
   </div>
   <div class="switch-row"><button onclick="toggleMode()">${isMoney?"⏱ 時間グラフ":"💴 金額グラフ"}</button></div>
   ${chart(pr,isMoney)}
   <div class="legend"><span><i></i>目標</span><span><i class="actual"></i>実績</span></div>
  </div>
- <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>`;
+ <div class="card calendar-card"><div class="section-title">カレンダー</div>${calendar(pr)}</div>
+ <button class="plus" onclick="logDay('${selectedDate}')">＋</button>`;
  }catch(err){
   console.error("Study render error:",err);
   $("#app").innerHTML=`<div class="card"><h2>勉強時間</h2><div class="warning">画面の表示中にエラーが発生しました。ページを再読み込みしてください。<br><small>${esc(err?.message||err)}</small></div></div>`;
@@ -322,39 +324,9 @@ window.settings=function settings(){
  open(`<h2>設定</h2>
  <div class="row"><button onclick="projects()">📁 プロジェクト選択</button></div>
  <div class="row"><button onclick="goalEdit()">🎯 目標設定・変更</button></div>
- <div class="row"><button class="danger delete-hold" onpointerdown="deleteHoldStart(event)" onpointerup="deleteHoldCancel(event)" onpointercancel="deleteHoldCancel(event)" onpointerleave="deleteHoldCancel(event)">🗑 プロジェクト削除（長押し）</button></div>
+ <div class="row"><button class="danger" style="background:none!important;color:#d84a4a!important" onclick="deleteProjectList()">🗑 プロジェクト削除</button></div>
  <button class="secondary" onclick="closeStudyModal()">閉じる</button>`);
 }
-
-let deleteHoldTimer=null;
-window.deleteHoldStart=function(e){
- e.preventDefault();
- clearTimeout(deleteHoldTimer);
- deleteHoldTimer=setTimeout(()=>{deleteHoldTimer=null;deleteProjectList()},700);
-}
-window.deleteHoldCancel=function(e){
- if(e)e.preventDefault();
- clearTimeout(deleteHoldTimer);deleteHoldTimer=null;
-}
-window.goalAchieved=function goalAchieved(){
- const pr=p();
- if(!pr||total(pr)<Number(pr.goal_minutes)||Number(pr.goal_minutes)<=0)return;
- open(`<h2>目標達成🎉</h2><p>おめでとうございます！目標を達成しました🎉</p><p>このプロジェクトを消して、次のプロジェクトを作りますか？</p><button class="primary" onclick="deleteAndCreateNext('${pr.id}')">はい</button><button class="secondary" onclick="closeStudyModal()">いいえ</button>`);
-}
-window.deleteAndCreateNext=async function(id){
- const pr=state.projects.find(x=>x.id===id);if(!pr)return;
- const sameType=state.projects.filter(x=>x.id!==id&&projectType(x)===projectType(pr));
- if(sameType.length){
-  const moved=await sb.from("study_logs").update({project_id:sameType[0].id}).eq("project_id",id).eq("user_id",user.id);
-  if(moved.error){alert("共有勉強記録の移動に失敗しました。\\n\\n"+moved.error.message);return}
- }
- const r=await sb.from("study_projects").delete().eq("id",id).eq("user_id",user.id);
- if(r.error){alert("プロジェクトを削除できませんでした。\\n\\n"+r.error.message);return}
- state.projects=state.projects.filter(x=>x.id!==id);state.logs=state.logs.filter(x=>x.project_id!==id);state.goals=state.goals.filter(x=>x.project_id!==id);
- currentId=null;closeStudyModal();
- window.newProject();
-}
-
 window.goalEdit=function goalEdit(){
  const pr=p();
  open(`<h2>目標設定・変更</h2>
@@ -428,26 +400,24 @@ function bindWheels(){
   el.dataset.bound="1";
   const vals=JSON.parse(el.dataset.values||"[]");
   let index=Math.max(0,vals.indexOf(Number(el.dataset.selected)));
-  let lastX=0,lastY=0,drag=false,carry=0;
-  const horizontal=el.parentElement.classList.contains("horizontal-wheel");
-  const STEP=horizontal?54:42;
+  let lastY=0,drag=false,carry=0;
+  const STEP=42;
   const apply=i=>{
    index=Math.max(0,Math.min(vals.length-1,i));
    el.dataset.selected=String(vals[index]);
-   if(horizontal)el.style.transform=`translateX(${108-index*STEP}px)`;
-   else el.style.transform=`translateY(${63-index*STEP}px)`;
+   el.style.transform=`translateY(${63-index*STEP}px)`;
    [...el.children].forEach((x,j)=>x.classList.toggle("selected",j===index));
   };
-  const moveBy=delta=>{
-   carry+=delta;
+  const moveBy=dy=>{
+   carry+=dy;
    while(Math.abs(carry)>=STEP){
     const dir=carry<0?1:-1;
     apply(index+dir);
     carry+=dir*STEP;
    }
   };
-  el.addEventListener("pointerdown",e=>{drag=true;lastX=e.clientX;lastY=e.clientY;carry=0;el.setPointerCapture?.(e.pointerId);});
-  el.addEventListener("pointermove",e=>{if(!drag)return;const delta=horizontal?e.clientX-lastX:e.clientY-lastY;if(horizontal)lastX=e.clientX;else lastY=e.clientY;moveBy(delta);});
+  el.addEventListener("pointerdown",e=>{drag=true;lastY=e.clientY;carry=0;el.setPointerCapture?.(e.pointerId);});
+  el.addEventListener("pointermove",e=>{if(!drag)return;const dy=e.clientY-lastY;lastY=e.clientY;moveBy(dy);});
   el.addEventListener("pointerup",e=>{drag=false;carry=0;el.releasePointerCapture?.(e.pointerId);});
   el.addEventListener("pointercancel",()=>{drag=false;carry=0;});
   el.addEventListener("wheel",e=>{e.preventDefault();apply(index+(e.deltaY>0?1:-1));},{passive:false});
@@ -464,7 +434,7 @@ function logDay(date){
 function wheel(name,vals,sel){
  const idx=Math.max(0,vals.indexOf(sel));
  const label=v=>name==="mins"?String(v).padStart(2,"0"):String(v);
- return `<div class="wheel ${name==="projectType"?"horizontal-wheel":""}"><div id="${name}Wheel" class="wheel-list" data-selected="${vals[idx]}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${label(v)}</div>`).join("")}</div></div>`;
+ return `<div class="wheel"><div id="${name}Wheel" class="wheel-list" data-selected="${vals[idx]}" data-values='${JSON.stringify(vals)}'>${vals.map((v,i)=>`<div class="wheel-item ${i===idx?"selected":""}">${label(v)}</div>`).join("")}</div></div>`;
 }
 window.saveLog=async date=>{
  const a=$("#hoursWheel"),b=$("#minsWheel");
